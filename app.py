@@ -3,12 +3,14 @@ app.py  —  EduPro Instructor & Course Quality Dashboard
 Run:  python -m streamlit run app.py
 """
 
-import warnings
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-warnings.filterwarnings("ignore")
+from edupro.analytics.kpis import KPIEngine
+from edupro.logging_setup import get_logger
+
+logger = get_logger("app")
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -157,12 +159,19 @@ CHART_BASE  = dict(
 # ── Data loading (cached) ──────────────────────────────────────────────────────
 @st.cache_data(show_spinner="Loading EduPro data…")
 def load_data():
-    from data_loader import get_all_data
-    return get_all_data()
+    from edupro.data.pipeline import load_all
+    dataset = load_all()
+    return {
+        "teachers": dataset.teachers,
+        "courses": dataset.courses,
+        "transactions": dataset.transactions,
+        "users": dataset.users,
+        "master": dataset.master,
+    }
 
 @st.cache_data(show_spinner="Computing analytics…")
 def run_analytics(_master, _teachers, _courses, _transactions):
-    from analytics import AnalyticsEngine
+    from edupro.analytics.engine import AnalyticsEngine
     engine = AnalyticsEngine(_master, _teachers, _courses, _transactions)
     return engine.run_full_analysis()
 
@@ -229,7 +238,6 @@ mask = (
 )
 filtered = master[mask].copy()
 
-from analytics import KPIEngine
 f_kpis = KPIEngine(filtered).compute_all_kpis() if len(filtered) > 0 else kpis
 
 teachers_f = teachers_df[
