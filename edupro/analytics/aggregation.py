@@ -63,7 +63,9 @@ def teacher_table(
 
         if attribution == "enrollment_weighted":
             if tot_enr > 0:
-                wt_course_rating = float((grp["EnrollmentCount"] * grp["CourseRating"]).sum() / tot_enr)
+                wt_course_rating = float(
+                    (grp["EnrollmentCount"] * grp["CourseRating"]).sum() / tot_enr
+                )
             else:
                 wt_course_rating = np.nan
         else:  # unweighted arithmetic mean across courses
@@ -74,14 +76,16 @@ def teacher_table(
         own_enr = float(grp.loc[own_domain_mask, "EnrollmentCount"].sum())
         own_domain_sh = float(own_enr / tot_enr) if tot_enr > 0 else 0.0
 
-        records.append({
-            "TeacherID": tid,
-            "total_enrollments": tot_enr,
-            "enrollment_share": float(tot_enr / total_platform_enrollments),
-            "n_courses": n_c,
-            "weighted_course_rating": wt_course_rating,
-            "own_domain_share": own_domain_sh,
-        })
+        records.append(
+            {
+                "TeacherID": tid,
+                "total_enrollments": tot_enr,
+                "enrollment_share": float(tot_enr / total_platform_enrollments),
+                "n_courses": n_c,
+                "weighted_course_rating": wt_course_rating,
+                "own_domain_share": own_domain_sh,
+            }
+        )
 
     agg_df = pd.DataFrame(records)
     merged = teachers.merge(agg_df, on="TeacherID", how="left")
@@ -133,18 +137,22 @@ def course_table(
 
         if attribution == "enrollment_weighted":
             if tot_enr > 0:
-                wt_teacher_rating = float((grp["EnrollmentCount"] * grp["TeacherRating"]).sum() / tot_enr)
+                wt_teacher_rating = float(
+                    (grp["EnrollmentCount"] * grp["TeacherRating"]).sum() / tot_enr
+                )
             else:
                 wt_teacher_rating = np.nan
         else:
             wt_teacher_rating = float(grp["TeacherRating"].mean())
 
-        records.append({
-            "CourseID": cid,
-            "total_enrollments": tot_enr,
-            "n_teachers": n_t,
-            "weighted_teacher_rating": wt_teacher_rating,
-        })
+        records.append(
+            {
+                "CourseID": cid,
+                "total_enrollments": tot_enr,
+                "n_teachers": n_t,
+                "weighted_teacher_rating": wt_teacher_rating,
+            }
+        )
 
     agg_df = pd.DataFrame(records)
     merged = courses.merge(agg_df, on="CourseID", how="left")

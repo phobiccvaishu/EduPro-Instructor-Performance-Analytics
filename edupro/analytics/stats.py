@@ -138,7 +138,9 @@ def correlation(
             "effect": effect,
         }
     else:
-        raise ValueError(f"Unsupported correlation method: {method}. Choose 'pearson' or 'spearman'.")
+        raise ValueError(
+            f"Unsupported correlation method: {method}. Choose 'pearson' or 'spearman'."
+        )
 
 
 def bootstrap_ci(
@@ -158,9 +160,11 @@ def bootstrap_ci(
     preserving the within-cluster correlation structure.
     """
     if stat_fn is None:
+
         def default_mean(x: Any) -> float:
             arr = np.asarray(x, dtype=float)
             return float(np.nanmean(arr))
+
         stat_fn = default_mean
 
     if rng is None:
@@ -188,7 +192,9 @@ def bootstrap_ci(
 
         for _ in range(n_boot):
             selected_cids = rng.choice(clusters, size=n_clusters, replace=True)
-            boot_sample = pd.concat([cluster_groups[cid] for cid in selected_cids], ignore_index=True)
+            boot_sample = pd.concat(
+                [cluster_groups[cid] for cid in selected_cids], ignore_index=True
+            )
             try:
                 est = stat_fn(boot_sample)
                 if np.isfinite(est):
@@ -441,7 +447,7 @@ def hhi(shares: Sequence[float] | np.ndarray | pd.Series) -> float:
     if total <= 0:
         return 0.0
     normalized_pct = (arr / total) * 100.0
-    return float(np.sum(normalized_pct ** 2))
+    return float(np.sum(normalized_pct**2))
 
 
 def leave_k_out(
@@ -520,7 +526,11 @@ def experience_course_slope(
     from statsmodels.regression.linear_model import OLS
 
     df = teacher_df.dropna(subset=["YearsOfExperience", "weighted_course_rating"]).copy()
-    if len(df) < 3:
+    if (
+        len(df) < 3
+        or df["YearsOfExperience"].nunique() < 2
+        or df["weighted_course_rating"].nunique() < 2
+    ):
         return {
             "slope": np.nan,
             "se": np.nan,

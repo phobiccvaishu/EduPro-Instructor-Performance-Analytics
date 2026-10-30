@@ -120,9 +120,11 @@ class KPIEngine:
         )
         grp["std_course_rating"] = grp["std_course_rating"].fillna(0.0)
         grp["consistency_index"] = grp.apply(
-            lambda r: round(1.0 - r["std_course_rating"] / r["mean_course_rating"], 4)
-            if r["mean_course_rating"] > 0
-            else 0.0,
+            lambda r: (
+                round(1.0 - r["std_course_rating"] / r["mean_course_rating"], 4)
+                if r["mean_course_rating"] > 0
+                else 0.0
+            ),
             axis=1,
         )
         return grp.sort_values("consistency_index", ascending=False).reset_index(drop=True)
@@ -139,27 +141,44 @@ class KPIEngine:
             subset=["YearsOfExperience", "TeacherRating"]
         )
 
-        r_t, p_t = stats.pearsonr(df["YearsOfExperience"], df["TeacherRating"])
-        X = df[["YearsOfExperience"]].values
-        y_t = df["TeacherRating"].values
-        reg_t = LinearRegression().fit(X, y_t)
-        slope_t = float(reg_t.coef_[0])
+        if (
+            len(df) < 3
+            or df["YearsOfExperience"].nunique() < 2
+            or df["TeacherRating"].nunique() < 2
+        ):
+            r_t, p_t, slope_t = np.nan, np.nan, np.nan
+        else:
+            r_t, p_t = stats.pearsonr(df["YearsOfExperience"], df["TeacherRating"])
+            X = df[["YearsOfExperience"]].values
+            y_t = df["TeacherRating"].values
+            reg_t = LinearRegression().fit(X, y_t)
+            slope_t = float(reg_t.coef_[0])
 
         df_c = self.master.dropna(subset=["YearsOfExperience", "CourseRating"])
-        r_c, p_c = stats.pearsonr(df_c["YearsOfExperience"], df_c["CourseRating"])
-        X_c = df_c[["YearsOfExperience"]].values
-        y_c = df_c["CourseRating"].values
-        reg_c = LinearRegression().fit(X_c, y_c)
-        slope_c = float(reg_c.coef_[0])
+        if (
+            len(df_c) < 3
+            or df_c["YearsOfExperience"].nunique() < 2
+            or df_c["CourseRating"].nunique() < 2
+        ):
+            r_c, p_c, slope_c = np.nan, np.nan, np.nan
+        else:
+            r_c, p_c = stats.pearsonr(df_c["YearsOfExperience"], df_c["CourseRating"])
+            X_c = df_c[["YearsOfExperience"]].values
+            y_c = df_c["CourseRating"].values
+            reg_c = LinearRegression().fit(X_c, y_c)
+            slope_c = float(reg_c.coef_[0])
+
+        valid_rs = [abs(float(r)) for r in (r_t, r_c) if np.isfinite(r)]
+        impact = round(float(np.mean(valid_rs)), 4) if valid_rs else 0.0
 
         return {
-            "r_exp_teacher": round(float(r_t), 4),
-            "p_exp_teacher": round(float(p_t), 6),
-            "slope_exp_teacher": round(slope_t, 6),
-            "r_exp_course": round(float(r_c), 4),
-            "p_exp_course": round(float(p_c), 6),
-            "slope_exp_course": round(slope_c, 6),
-            "impact_score": round((abs(float(r_t)) + abs(float(r_c))) / 2.0, 4),
+            "r_exp_teacher": round(float(r_t), 4) if np.isfinite(r_t) else np.nan,
+            "p_exp_teacher": round(float(p_t), 6) if np.isfinite(p_t) else np.nan,
+            "slope_exp_teacher": round(slope_t, 6) if np.isfinite(slope_t) else np.nan,
+            "r_exp_course": round(float(r_c), 4) if np.isfinite(r_c) else np.nan,
+            "p_exp_course": round(float(p_c), 6) if np.isfinite(p_c) else np.nan,
+            "slope_exp_course": round(slope_c, 6) if np.isfinite(slope_c) else np.nan,
+            "impact_score": impact,
         }
 
     def enrollment_influence_ratio(self, high_threshold: float | None = None) -> dict[str, Any]:
@@ -287,7 +306,9 @@ class KPIEngine:
         """
         m = self.master.reset_index(drop=True)
         if m.empty:
-            return KPIResult("rating_consistency_index", 0.0, np.nan, np.nan, 0, "index (0–1)", "None", "", "")
+            return KPIResult(
+                "rating_consistency_index", 0.0, np.nan, np.nan, 0, "index (0–1)", "None", "", ""
+            )
 
         # Precompute teacher group indices and normalized weights once for fast permutation/bootstrap
         teacher_groups = []
@@ -303,9 +324,12 @@ class KPIEngine:
             teacher_groups.append((indices, norm_w, tot_e))
 
         if not teacher_groups:
-            return KPIResult("rating_consistency_index", 0.0, np.nan, np.nan, 0, "index (0–1)", "None", "", "")
+            return KPIResult(
+                "rating_consistency_index", 0.0, np.nan, np.nan, 0, "index (0–1)", "None", "", ""
+            )
 
         cr_orig = m["CourseRating"].to_numpy(dtype=float)
+
         # Function to compute weighted platform consistency from a ratings array
         def calc_platform_cons(cr_arr: np.ndarray) -> float:
             c_list = []
@@ -411,7 +435,7 @@ class KPIEngine:
 
         df = tt.dropna(subset=["YearsOfExperience", "TeacherRating"]).copy()
         n = len(df)
-        if n < 3:
+        if n < 3 or df["YearsOfExperience"].nunique() < 2 or df["TeacherRating"].nunique() < 2:
             return KPIResult(
                 name="experience_impact_teacher_rating",
                 value=0.0,
@@ -422,7 +446,13 @@ class KPIEngine:
                 evidence="Insufficient data",
                 definition="Annual rating increase per year of instructor teaching experience (OLS on TeacherRating).",
                 caveat="",
-                extra={"slope": np.nan, "ci": (np.nan, np.nan), "se": np.nan, "p_value": np.nan, "r": np.nan},
+                extra={
+                    "slope": np.nan,
+                    "ci": (np.nan, np.nan),
+                    "se": np.nan,
+                    "p_value": np.nan,
+                    "r": np.nan,
+                },
             )
 
         x = df["YearsOfExperience"].to_numpy(dtype=float)
@@ -475,7 +505,12 @@ class KPIEngine:
 
         df = tt.dropna(subset=["YearsOfExperience", "weighted_course_rating"]).copy()
         if len(df) >= 3:
-            corr_cr = correlation(df["YearsOfExperience"], df["weighted_course_rating"], method="pearson", alpha=cfg.alpha)
+            corr_cr = correlation(
+                df["YearsOfExperience"],
+                df["weighted_course_rating"],
+                method="pearson",
+                alpha=cfg.alpha,
+            )
             ev = evidence_label(p_cr, n, slope_cr_ci, corr_cr["effect"], alpha=cfg.alpha)
             r_val = corr_cr["statistic"]
         else:
@@ -516,7 +551,9 @@ class KPIEngine:
 
         p_tr = kpi_tr.extra.get("p_value", np.nan)
         p_cr = kpi_cr.extra.get("p_value", np.nan)
-        disc_flag = bool(np.isfinite(p_tr) and np.isfinite(p_cr) and p_tr < cfg.alpha and p_cr >= cfg.alpha)
+        disc_flag = bool(
+            np.isfinite(p_tr) and np.isfinite(p_cr) and p_tr < cfg.alpha and p_cr >= cfg.alpha
+        )
 
         return KPIResult(
             name="experience_impact",
@@ -602,7 +639,9 @@ class KPIEngine:
             s_rat = (s_sh / s_exp) if s_exp > 0 else 0.0
             return {"ratio": s_rat, "high_share": s_sh, "n": s_n_tot}
 
-        leave_k_res = leave_k_out(calc_ratio, tt, sort_col="total_enrollments", k_values=(0, 1, 2, 3, 4))
+        leave_k_res = leave_k_out(
+            calc_ratio, tt, sort_col="total_enrollments", k_values=(0, 1, 2, 3, 4)
+        )
 
         # Robustness classification per Settings thresholds:
         # Robust only if ratio after removing top k (default 3) stays above 75% of base ratio AND CI excludes 1.0

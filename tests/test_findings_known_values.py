@@ -100,7 +100,9 @@ def test_f13_known_ml_curriculum_gap(dataset):
     )
     assert f13.statistic == pytest.approx(0.397, abs=1e-2)
     assert f13.extra["ml_quality_gap"]["A_ml_category_catalog_cr"] == pytest.approx(2.658, abs=1e-2)
-    assert f13.extra["ml_quality_gap"]["B_ml_teachers_weighted_cr"] == pytest.approx(3.055, abs=1e-2)
+    assert f13.extra["ml_quality_gap"]["B_ml_teachers_weighted_cr"] == pytest.approx(
+        3.055, abs=1e-2
+    )
     assert f13.extra["ml_quality_gap"]["bootstrap_mean"] == pytest.approx(0.289, abs=1e-2)
     assert f13.ci_low == pytest.approx(-0.066, abs=1e-2)
     assert f13.ci_high == pytest.approx(0.418, abs=1e-2)

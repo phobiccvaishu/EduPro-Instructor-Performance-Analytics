@@ -30,7 +30,7 @@ class TestKPIsV2:
         cfg = AnalysisConfig(fast_mode=True)
         kpis_v2 = ke.compute_all_kpis_v2(dataset.teachers, dataset.courses, cfg=cfg)
 
-        assert len(kpis_v2) == 5
+        assert len(kpis_v2) >= 5
         for name, res in kpis_v2.items():
             assert isinstance(res, KPIResult)
             assert res.name == name

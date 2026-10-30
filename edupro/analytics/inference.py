@@ -50,7 +50,9 @@ class Finding:
     p_value: float
     effect_label: str
     evidence: str  # "Strong" | "Moderate" | "Weak" | "None" | "Insufficient data"
-    verdict: str  # "supported" | "not supported" | "inconclusive" | "descriptive" | "insufficient data"
+    verdict: (
+        str  # "supported" | "not supported" | "inconclusive" | "descriptive" | "insufficient data"
+    )
     notes: str
     extra: dict[str, Any] = field(default_factory=dict)
 
@@ -170,7 +172,7 @@ def eval_f2_experience_vs_teacher_rating(
     df = teachers.dropna(subset=["YearsOfExperience", "TeacherRating"]).copy()
     n = len(df)
 
-    if n < 3:
+    if n < 3 or df["YearsOfExperience"].nunique() < 2 or df["TeacherRating"].nunique() < 2:
         return Finding(
             id="F2",
             question="Does instructor experience predict higher instructor rating?",
@@ -192,7 +194,9 @@ def eval_f2_experience_vs_teacher_rating(
     y = df["TeacherRating"].to_numpy(dtype=float)
 
     p_corr = correlation(x, y, method="pearson", alpha=cfg.alpha)
-    s_corr = correlation(x, y, method="spearman", alpha=cfg.alpha, n_boot=cfg.effective_n_boot, seed=cfg.seed)
+    s_corr = correlation(
+        x, y, method="spearman", alpha=cfg.alpha, n_boot=cfg.effective_n_boot, seed=cfg.seed
+    )
 
     # OLS Slope
     X = sm.add_constant(x)
@@ -222,11 +226,23 @@ def eval_f2_experience_vs_teacher_rating(
         b_ratings = df.loc[mask, "TeacherRating"].to_numpy(dtype=float)
         b_n = len(b_ratings)
         b_mean = float(np.mean(b_ratings)) if b_n > 0 else np.nan
-        b_ci = bootstrap_ci(b_ratings, np.mean, n_boot=cfg.effective_n_boot, seed=cfg.seed) if b_n >= 2 else (np.nan, np.nan)
+        b_ci = (
+            bootstrap_ci(b_ratings, np.mean, n_boot=cfg.effective_n_boot, seed=cfg.seed)
+            if b_n >= 2
+            else (np.nan, np.nan)
+        )
         band_stats[band_name] = {"n": b_n, "mean": b_mean, "ci": b_ci}
 
-    ev = evidence_label(p_corr["p_value"], n, (p_corr["ci_low"], p_corr["ci_high"]), p_corr["effect"], alpha=cfg.alpha)
-    verdict = _make_verdict(p_corr["p_value"], (p_corr["ci_low"], p_corr["ci_high"]), n, cfg.min_group_size, cfg.alpha)
+    ev = evidence_label(
+        p_corr["p_value"],
+        n,
+        (p_corr["ci_low"], p_corr["ci_high"]),
+        p_corr["effect"],
+        alpha=cfg.alpha,
+    )
+    verdict = _make_verdict(
+        p_corr["p_value"], (p_corr["ci_low"], p_corr["ci_high"]), n, cfg.min_group_size, cfg.alpha
+    )
 
     notes = (
         f"Experience is positively correlated with TeacherRating (r = {p_corr['statistic']:.3f}, "
@@ -269,7 +285,14 @@ def eval_f3_experience_vs_course_rating(
     n_teacher = len(t_clean)
     m_clean = master.dropna(subset=["YearsOfExperience", "CourseRating", "TeacherID"]).copy()
 
-    if n_teacher < 3 or len(m_clean) < 3:
+    if (
+        n_teacher < 3
+        or len(m_clean) < 3
+        or m_clean["YearsOfExperience"].nunique() < 2
+        or m_clean["CourseRating"].nunique() < 2
+        or t_clean["YearsOfExperience"].nunique() < 2
+        or t_clean["weighted_course_rating"].nunique() < 2
+    ):
         return Finding(
             id="F3",
             question="Does instructor experience transfer to higher course ratings?",
@@ -313,8 +336,20 @@ def eval_f3_experience_vs_course_rating(
     ci_int = ols_cluster.conf_int(alpha=cfg.alpha)[1]
     cluster_ci = (float(ci_int[0]), float(ci_int[1]))
 
-    ev = evidence_label(t_corr["p_value"], n_teacher, (t_corr["ci_low"], t_corr["ci_high"]), t_corr["effect"], alpha=cfg.alpha)
-    verdict = _make_verdict(t_corr["p_value"], (t_corr["ci_low"], t_corr["ci_high"]), n_teacher, cfg.min_group_size, cfg.alpha)
+    ev = evidence_label(
+        t_corr["p_value"],
+        n_teacher,
+        (t_corr["ci_low"], t_corr["ci_high"]),
+        t_corr["effect"],
+        alpha=cfg.alpha,
+    )
+    verdict = _make_verdict(
+        t_corr["p_value"],
+        (t_corr["ci_low"], t_corr["ci_high"]),
+        n_teacher,
+        cfg.min_group_size,
+        cfg.alpha,
+    )
 
     notes = (
         f"At teacher level (n={n_teacher}), experience vs weighted course rating is r = {t_corr['statistic']:.3f} "
@@ -388,7 +423,10 @@ def eval_f4a_experience_group_contrast(
         b2_matrix = rng.choice(g2, size=(cfg.effective_n_boot, n2), replace=True)
         diff_boots = b2_matrix.mean(axis=1) - b1_matrix.mean(axis=1)
         q_low, q_high = (cfg.alpha / 2.0) * 100.0, (1.0 - cfg.alpha / 2.0) * 100.0
-        mean_diff_ci = (float(np.percentile(diff_boots, q_low)), float(np.percentile(diff_boots, q_high)))
+        mean_diff_ci = (
+            float(np.percentile(diff_boots, q_low)),
+            float(np.percentile(diff_boots, q_high)),
+        )
     else:
         mean_diff_ci = (np.nan, np.nan)
 
@@ -423,6 +461,7 @@ def eval_f4a_experience_group_contrast(
             "mean_diff": obs_mean_diff,
             "mean_diff_ci": mean_diff_ci,
             "mann_whitney": mw_res,
+            "verdict": verdict,
         },
     )
 
@@ -434,7 +473,7 @@ def eval_f4b_experience_breakpoint(
     """F4b: Piecewise-linear breakpoint threshold search across experience (teacher level, n=60)."""
     df = teachers.dropna(subset=["YearsOfExperience", "TeacherRating"]).copy()
     n = len(df)
-    if n < 5:
+    if n < 5 or df["YearsOfExperience"].nunique() < 4 or df["TeacherRating"].nunique() < 2:
         return Finding(
             id="F4b",
             question="Is there an optimal piecewise-linear breakpoint threshold in instructor ratings?",
@@ -574,6 +613,7 @@ def eval_f4b_experience_breakpoint(
             "slope_after_ci": ci_slope_after,
             "grid_results": grid_results,
             "lowess_curve": lowess_points,
+            "verdict": verdict,
         },
     )
 
@@ -637,7 +677,13 @@ def eval_f5_teacher_vs_course_rating(
     c_clean = course_df.dropna(subset=["CourseRating", "weighted_teacher_rating"]).copy()
     m_clean = master.dropna(subset=["TeacherRating", "CourseRating", "TeacherID"]).copy()
 
-    if n_teacher < 3 or len(c_clean) < 3 or len(m_clean) < 3:
+    if (
+        n_teacher < 3
+        or len(c_clean) < 3
+        or len(m_clean) < 3
+        or m_clean["TeacherRating"].nunique() < 2
+        or m_clean["CourseRating"].nunique() < 2
+    ):
         return Finding(
             id="F5",
             question="Are instructor ratings correlated with the quality ratings of the courses they teach?",
@@ -671,7 +717,9 @@ def eval_f5_teacher_vs_course_rating(
     )
 
     # c. Pair level (n=887)
-    pair_corr = correlation(m_clean["TeacherRating"], m_clean["CourseRating"], method="pearson", alpha=cfg.alpha)
+    pair_corr = correlation(
+        m_clean["TeacherRating"], m_clean["CourseRating"], method="pearson", alpha=cfg.alpha
+    )
 
     # Secondary Pair level cluster-robust OLS (clusters = TeacherID)
     X_m = sm.add_constant(m_clean["TeacherRating"].to_numpy(dtype=float))
@@ -684,8 +732,20 @@ def eval_f5_teacher_vs_course_rating(
     cluster_ci = (float(ci_int[0]), float(ci_int[1]))
 
     rating_decoupling = bool(t_corr["p_value"] >= cfg.alpha)
-    ev = evidence_label(t_corr["p_value"], n_teacher, (t_corr["ci_low"], t_corr["ci_high"]), t_corr["effect"], alpha=cfg.alpha)
-    verdict = _make_verdict(t_corr["p_value"], (t_corr["ci_low"], t_corr["ci_high"]), n_teacher, cfg.min_group_size, cfg.alpha)
+    ev = evidence_label(
+        t_corr["p_value"],
+        n_teacher,
+        (t_corr["ci_low"], t_corr["ci_high"]),
+        t_corr["effect"],
+        alpha=cfg.alpha,
+    )
+    verdict = _make_verdict(
+        t_corr["p_value"],
+        (t_corr["ci_low"], t_corr["ci_high"]),
+        n_teacher,
+        cfg.min_group_size,
+        cfg.alpha,
+    )
 
     notes = (
         f"Teacher-level correlation is r = {t_corr['statistic']:.3f} (p = {t_corr['p_value']:.4f}). "
@@ -768,14 +828,16 @@ def eval_f6_course_rating_by_category(
                 pairs_meta.append((c1, c2, mw))
         adj_p = holm_adjust(raw_p)
         for idx, (c1, c2, mw) in enumerate(pairs_meta):
-            pairwise.append({
-                "group1": c1,
-                "group2": c2,
-                "u_stat": mw["statistic"],
-                "p_raw": mw["p_value"],
-                "p_adj": float(adj_p[idx]),
-                "rank_biserial": mw.get("rank_biserial", np.nan),
-            })
+            pairwise.append(
+                {
+                    "group1": c1,
+                    "group2": c2,
+                    "u_stat": mw["statistic"],
+                    "p_raw": mw["p_value"],
+                    "p_adj": float(adj_p[idx]),
+                    "rank_biserial": mw.get("rank_biserial", np.nan),
+                }
+            )
 
     cell_counts = df.groupby(["CourseCategory", "CourseLevel"]).size().unstack(fill_value=0)
     flagged_cells = []
@@ -845,7 +907,9 @@ def eval_f7_course_rating_by_level(
             extra={},
         )
 
-    groups = [df.loc[df["CourseLevel"] == lvl, "CourseRating"].to_numpy(dtype=float) for lvl in levels]
+    groups = [
+        df.loc[df["CourseLevel"] == lvl, "CourseRating"].to_numpy(dtype=float) for lvl in levels
+    ]
     kw = kruskal_with_effect(*groups)
     kw_df = len(levels) - 1
     kw["df"] = kw_df
@@ -987,8 +1051,12 @@ def eval_f8b_course_quality_by_gender(
 ) -> Finding:
     """F8b: weighted_course_rating by Gender (teacher level, n=60)."""
     tt_clean = teacher_df.dropna(subset=["Gender", "weighted_course_rating"]).copy()
-    males_cr = tt_clean.loc[tt_clean["Gender"] == "Male", "weighted_course_rating"].to_numpy(dtype=float)
-    females_cr = tt_clean.loc[tt_clean["Gender"] == "Female", "weighted_course_rating"].to_numpy(dtype=float)
+    males_cr = tt_clean.loc[tt_clean["Gender"] == "Male", "weighted_course_rating"].to_numpy(
+        dtype=float
+    )
+    females_cr = tt_clean.loc[tt_clean["Gender"] == "Female", "weighted_course_rating"].to_numpy(
+        dtype=float
+    )
     n1, n2 = len(females_cr), len(males_cr)
     n = len(tt_clean)
 
@@ -1079,7 +1147,9 @@ def eval_f8c_gender_by_level_cells(
     cfg: AnalysisConfig = default_analysis_config,
 ) -> Finding:
     """F8c: Descriptive Gender x CourseLevel cells of enrollment-weighted CourseRating."""
-    m_clean = master.dropna(subset=["Gender", "CourseLevel", "EnrollmentCount", "CourseRating", "TeacherID"]).copy()
+    m_clean = master.dropna(
+        subset=["Gender", "CourseLevel", "EnrollmentCount", "CourseRating", "TeacherID"]
+    ).copy()
     n_total = len(m_clean)
     if n_total == 0:
         return Finding(
@@ -1106,13 +1176,19 @@ def eval_f8c_gender_by_level_cells(
     for (gender, level), grp in m_clean.groupby(["Gender", "CourseLevel"]):
         tot_enr = int(grp["EnrollmentCount"].sum())
         n_teachers = int(grp["TeacherID"].nunique())
-        wt_cr = float((grp["EnrollmentCount"] * grp["CourseRating"]).sum() / tot_enr) if tot_enr > 0 else np.nan
+        wt_cr = (
+            float((grp["EnrollmentCount"] * grp["CourseRating"]).sum() / tot_enr)
+            if tot_enr > 0
+            else np.nan
+        )
 
         cluster_agg = grp.groupby("TeacherID").apply(
-            lambda g: pd.Series({
-                "e": float(g["EnrollmentCount"].sum()),
-                "s": float((g["EnrollmentCount"] * g["CourseRating"]).sum()),
-            }),
+            lambda g: pd.Series(
+                {
+                    "e": float(g["EnrollmentCount"].sum()),
+                    "s": float((g["EnrollmentCount"] * g["CourseRating"]).sum()),
+                }
+            ),
             include_groups=False,
         )
         c_e = cluster_agg["e"].to_numpy()
@@ -1221,7 +1297,10 @@ def eval_f9_tier_vs_course_quality(
     n = len(df)
     tiers = [settings.tier_high_label, settings.tier_mid_label, settings.tier_low_label]
 
-    groups = [df.loc[df["InstructorTier"] == t, "weighted_course_rating"].to_numpy(dtype=float) for t in tiers]
+    groups = [
+        df.loc[df["InstructorTier"] == t, "weighted_course_rating"].to_numpy(dtype=float)
+        for t in tiers
+    ]
 
     if n < 3 or sum(len(g) > 0 for g in groups) < 2:
         return Finding(
@@ -1255,17 +1334,18 @@ def eval_f9_tier_vs_course_quality(
                 pairs_meta.append((t1, t2, mw))
         adj_p = holm_adjust(raw_p)
         for idx, (t1, t2, mw) in enumerate(pairs_meta):
-            pairwise.append({
-                "tier1": t1,
-                "tier2": t2,
-                "p_raw": mw["p_value"],
-                "p_adj": float(adj_p[idx]),
-                "rank_biserial": mw.get("rank_biserial", np.nan),
-            })
+            pairwise.append(
+                {
+                    "tier1": t1,
+                    "tier2": t2,
+                    "p_raw": mw["p_value"],
+                    "p_adj": float(adj_p[idx]),
+                    "rank_biserial": mw.get("rank_biserial", np.nan),
+                }
+            )
 
     tier_means = {
-        t: float(np.mean(g)) if len(g) > 0 else np.nan
-        for t, g in zip(tiers, groups, strict=True)
+        t: float(np.mean(g)) if len(g) > 0 else np.nan for t, g in zip(tiers, groups, strict=True)
     }
 
     ev = evidence_label(kw["p_value"], n, None, kw["effect"], alpha=cfg.alpha)
@@ -1337,8 +1417,12 @@ def eval_f10_rating_vs_enrollment(
     )
 
     # High tier vs rest Mann-Whitney
-    high_enr = df.loc[df["InstructorTier"] == settings.tier_high_label, "total_enrollments"].to_numpy(dtype=float)
-    rest_enr = df.loc[df["InstructorTier"] != settings.tier_high_label, "total_enrollments"].to_numpy(dtype=float)
+    high_enr = df.loc[
+        df["InstructorTier"] == settings.tier_high_label, "total_enrollments"
+    ].to_numpy(dtype=float)
+    rest_enr = df.loc[
+        df["InstructorTier"] != settings.tier_high_label, "total_enrollments"
+    ].to_numpy(dtype=float)
     mw_high_rest = mann_whitney_with_effect(high_enr, rest_enr)
 
     # Per-tier mean enrollments
@@ -1347,8 +1431,16 @@ def eval_f10_rating_vs_enrollment(
         sub = df.loc[df["InstructorTier"] == tier_label, "total_enrollments"]
         tier_enr_means[tier_label] = round(float(sub.mean()), 2) if len(sub) > 0 else np.nan
 
-    ev = evidence_label(s_corr["p_value"], n, (s_corr["ci_low"], s_corr["ci_high"]), s_corr["effect"], alpha=cfg.alpha)
-    verdict = _make_verdict(s_corr["p_value"], (s_corr["ci_low"], s_corr["ci_high"]), n, cfg.min_group_size, cfg.alpha)
+    ev = evidence_label(
+        s_corr["p_value"],
+        n,
+        (s_corr["ci_low"], s_corr["ci_high"]),
+        s_corr["effect"],
+        alpha=cfg.alpha,
+    )
+    verdict = _make_verdict(
+        s_corr["p_value"], (s_corr["ci_low"], s_corr["ci_high"]), n, cfg.min_group_size, cfg.alpha
+    )
 
     notes = (
         f"Spearman correlation between TeacherRating and total enrollments is rho = {s_corr['statistic']:.3f} "
@@ -1429,10 +1521,14 @@ def eval_f11_concentration_and_confounding(
         rat = (sh / exp) if exp > 0 else 0.0
         return {"ratio": rat, "high_share": sh, "n": n_tot}
 
-    leave_k_res = leave_k_out(get_high_ratio, teacher_df, sort_col="total_enrollments", k_values=(0, 1, 2, 3, 4))
+    leave_k_res = leave_k_out(
+        get_high_ratio, teacher_df, sort_col="total_enrollments", k_values=(0, 1, 2, 3, 4)
+    )
 
     # c. Domain confounding: top 2 demand domains by teacher enrollments
-    domain_enr = teacher_df.groupby("Expertise")["total_enrollments"].sum().sort_values(ascending=False)
+    domain_enr = (
+        teacher_df.groupby("Expertise")["total_enrollments"].sum().sort_values(ascending=False)
+    )
     top2_domains = list(domain_enr.index[:2])
     in_top2 = teacher_df["Expertise"].isin(top2_domains)
 
@@ -1480,13 +1576,17 @@ def eval_f11_concentration_and_confounding(
         X_no_tr = X_reg.drop(columns=["TeacherRating"])
         r2_no_tr = OLS(y_reg, X_no_tr).fit().rsquared
         r2_full = ols_domain.rsquared
-        partial_r2 = max(0.0, float((r2_full - r2_no_tr) / (1.0 - r2_no_tr))) if r2_no_tr < 1.0 else 0.0
+        partial_r2 = (
+            max(0.0, float((r2_full - r2_no_tr) / (1.0 - r2_no_tr))) if r2_no_tr < 1.0 else 0.0
+        )
     else:
         tr_coef, tr_se, tr_p = np.nan, np.nan, np.nan
         tr_ci = (np.nan, np.nan)
         r2_full, partial_r2 = np.nan, np.nan
 
-    verdict = _make_verdict(tr_p, tr_ci, len(teacher_df), cfg.min_group_size, cfg.alpha, is_descriptive=True)
+    verdict = _make_verdict(
+        tr_p, tr_ci, len(teacher_df), cfg.min_group_size, cfg.alpha, is_descriptive=True
+    )
 
     notes = (
         f"Teacher enrollment Gini = {t_gini:.3f}, Top-5 share = {t_top5 * 100:.1f}%, "
@@ -1549,14 +1649,22 @@ def eval_f12_expertise_vs_teacher_rating(
     # min_group_size = 2 (10 groups, n=58)
     valid2 = [d for d, c in domain_counts.items() if c >= 2]
     groups2 = [df.loc[df["Expertise"] == d, "TeacherRating"].to_numpy(dtype=float) for d in valid2]
-    kw2 = kruskal_with_effect(*groups2) if len(valid2) >= 2 else {"statistic": np.nan, "p_value": np.nan, "effect": "undefined", "df": 0}
+    kw2 = (
+        kruskal_with_effect(*groups2)
+        if len(valid2) >= 2
+        else {"statistic": np.nan, "p_value": np.nan, "effect": "undefined", "df": 0}
+    )
     if "df" not in kw2:
         kw2["df"] = len(valid2) - 1
 
     # min_group_size = 3 (9 groups, n=56)
     valid3 = [d for d, c in domain_counts.items() if c >= 3]
     groups3 = [df.loc[df["Expertise"] == d, "TeacherRating"].to_numpy(dtype=float) for d in valid3]
-    kw3 = kruskal_with_effect(*groups3) if len(valid3) >= 2 else {"statistic": np.nan, "p_value": np.nan, "effect": "undefined", "df": 0}
+    kw3 = (
+        kruskal_with_effect(*groups3)
+        if len(valid3) >= 2
+        else {"statistic": np.nan, "p_value": np.nan, "effect": "undefined", "df": 0}
+    )
     if "df" not in kw3:
         kw3["df"] = len(valid3) - 1
 
@@ -1656,7 +1764,11 @@ def eval_f13_expertise_vs_course_quality_and_ml_gap(
         )
 
     ml_tot_enr = float(ml_pairs["EnrollmentCount"].sum())
-    inst_ml_cr_weighted = float((ml_pairs["EnrollmentCount"] * ml_pairs["CourseRating"]).sum() / ml_tot_enr) if ml_tot_enr > 0 else np.nan
+    inst_ml_cr_weighted = (
+        float((ml_pairs["EnrollmentCount"] * ml_pairs["CourseRating"]).sum() / ml_tot_enr)
+        if ml_tot_enr > 0
+        else np.nan
+    )
     inst_ml_cr_unweighted = float(ml_pairs["CourseRating"].mean()) if len(ml_pairs) > 0 else np.nan
 
     gap_weighted = inst_ml_cr_weighted - cat_ml_cr_catalog
@@ -1679,7 +1791,7 @@ def eval_f13_expertise_vs_course_quality_and_ml_gap(
         b_e = e_arr[b_idx].sum(axis=1)
         b_w = w_arr[b_idx].sum(axis=1)
         valid_b = b_e > 0
-        boots = ((b_w[valid_b] / b_e[valid_b]) - cat_ml_cr_catalog)
+        boots = (b_w[valid_b] / b_e[valid_b]) - cat_ml_cr_catalog
         boot_mean = float(np.mean(boots))
         n_le_0 = int(np.sum(boots <= 0))
         n_ge_0 = int(np.sum(boots >= 0))
@@ -1697,7 +1809,9 @@ def eval_f13_expertise_vs_course_quality_and_ml_gap(
 
     # Separately report ML instructors' TeacherRating
     ml_teachers_df = teacher_df[teacher_df["Expertise"] == "Machine Learning"]
-    ml_teacher_rating_mean = float(ml_teachers_df["TeacherRating"].mean()) if len(ml_teachers_df) > 0 else np.nan
+    ml_teacher_rating_mean = (
+        float(ml_teachers_df["TeacherRating"].mean()) if len(ml_teachers_df) > 0 else np.nan
+    )
 
     own_mean = float(teacher_df["own_domain_share"].mean())
     own_med = float(teacher_df["own_domain_share"].median())
@@ -1781,5 +1895,7 @@ def run_all_inferences(
     findings["F10"] = eval_f10_rating_vs_enrollment(teacher_df, cfg)
     findings["F11"] = eval_f11_concentration_and_confounding(teacher_df, course_df, cfg)
     findings["F12"] = eval_f12_expertise_vs_teacher_rating(teachers, cfg)
-    findings["F13"] = eval_f13_expertise_vs_course_quality_and_ml_gap(teacher_df, courses, master, cfg)
+    findings["F13"] = eval_f13_expertise_vs_course_quality_and_ml_gap(
+        teacher_df, courses, master, cfg
+    )
     return findings

@@ -139,30 +139,57 @@ class AnalyticsEngine:
         """
         t = self.teachers.dropna(subset=["YearsOfExperience", "TeacherRating"])
 
-        r_t, p_t = stats.pearsonr(t["YearsOfExperience"], t["TeacherRating"])
-        r_s, p_s = stats.spearmanr(t["YearsOfExperience"], t["TeacherRating"])
+        if len(t) < 3 or t["YearsOfExperience"].nunique() < 2 or t["TeacherRating"].nunique() < 2:
+            r_t, p_t = np.nan, np.nan
+            r_s, p_s = np.nan, np.nan
+        else:
+            r_t, p_t = stats.pearsonr(t["YearsOfExperience"], t["TeacherRating"])
+            r_s, p_s = stats.spearmanr(t["YearsOfExperience"], t["TeacherRating"])
 
         # Quartile-based binning
         t = t.copy()
-        t["exp_bin"] = pd.qcut(
-            t["YearsOfExperience"],
-            q=4,
-            labels=["Q1 (Low)", "Q2", "Q3", "Q4 (High)"],
-            duplicates="drop",
-        )
-        quartile_avg = (
-            t.groupby("exp_bin", observed=True)["TeacherRating"]
-            .mean()
-            .round(3)
-            .reset_index()
-        )
+        if len(t) > 0 and t["YearsOfExperience"].nunique() >= 4:
+            try:
+                t["exp_bin"] = pd.qcut(
+                    t["YearsOfExperience"],
+                    q=4,
+                    labels=["Q1 (Low)", "Q2", "Q3", "Q4 (High)"],
+                    duplicates="drop",
+                )
+                quartile_avg = (
+                    t.groupby("exp_bin", observed=True)["TeacherRating"]
+                    .mean()
+                    .round(3)
+                    .reset_index()
+                )
+            except ValueError:
+                t["exp_bin"] = pd.qcut(
+                    t["YearsOfExperience"],
+                    q=max(1, min(4, t["YearsOfExperience"].nunique())),
+                    duplicates="drop",
+                )
+                quartile_avg = (
+                    t.groupby("exp_bin", observed=True)["TeacherRating"]
+                    .mean()
+                    .round(3)
+                    .reset_index()
+                )
+        elif len(t) > 0:
+            t["exp_bin"] = pd.qcut(
+                t["YearsOfExperience"],
+                q=max(1, t["YearsOfExperience"].nunique()),
+                duplicates="drop",
+            )
+            quartile_avg = (
+                t.groupby("exp_bin", observed=True)["TeacherRating"].mean().round(3).reset_index()
+            )
+        else:
+            quartile_avg = pd.DataFrame(columns=["exp_bin", "TeacherRating"])
 
         # Experience bins (0-5, 6-10, 11-15, 16+)
         bins = list(settings.exp_bins)
         labels = list(settings.exp_labels)
-        t["exp_group"] = pd.cut(
-            t["YearsOfExperience"], bins=bins, labels=labels, right=True
-        )
+        t["exp_group"] = pd.cut(t["YearsOfExperience"], bins=bins, labels=labels, right=True)
         group_avg = (
             t.groupby("exp_group", observed=True)["TeacherRating"]
             .agg(["mean", "count"])
@@ -172,15 +199,18 @@ class AnalyticsEngine:
 
         # Course-level correlation (using master)
         mc = self.master.dropna(subset=["YearsOfExperience", "CourseRating"])
-        r_c, p_c = stats.pearsonr(mc["YearsOfExperience"], mc["CourseRating"])
+        if len(mc) < 3 or mc["YearsOfExperience"].nunique() < 2 or mc["CourseRating"].nunique() < 2:
+            r_c, p_c = np.nan, np.nan
+        else:
+            r_c, p_c = stats.pearsonr(mc["YearsOfExperience"], mc["CourseRating"])
 
         return {
-            "pearson_r_teacher": round(float(r_t), 4),
-            "pearson_p_teacher": round(float(p_t), 6),
-            "spearman_r_teacher": round(float(r_s), 4),
-            "spearman_p_teacher": round(float(p_s), 6),
-            "pearson_r_course": round(float(r_c), 4),
-            "pearson_p_course": round(float(p_c), 6),
+            "pearson_r_teacher": round(float(r_t), 4) if np.isfinite(r_t) else np.nan,
+            "pearson_p_teacher": round(float(p_t), 6) if np.isfinite(p_t) else np.nan,
+            "spearman_r_teacher": round(float(r_s), 4) if np.isfinite(r_s) else np.nan,
+            "spearman_p_teacher": round(float(p_s), 6) if np.isfinite(p_s) else np.nan,
+            "pearson_r_course": round(float(r_c), 4) if np.isfinite(r_c) else np.nan,
+            "pearson_p_course": round(float(p_c), 6) if np.isfinite(p_c) else np.nan,
             "quartile_avg": quartile_avg,
             "group_avg": group_avg,
         }
@@ -305,9 +335,11 @@ class AnalyticsEngine:
         )
         teacher_metrics["consistency_std"] = teacher_metrics["consistency_std"].fillna(0.0)
         teacher_metrics["consistency_index"] = teacher_metrics.apply(
-            lambda r: round(1.0 - r["consistency_std"] / r["avg_course_rating"], 4)
-            if r["avg_course_rating"] > 0
-            else 0.0,
+            lambda r: (
+                round(1.0 - r["consistency_std"] / r["avg_course_rating"], 4)
+                if r["avg_course_rating"] > 0
+                else 0.0
+            ),
             axis=1,
         )
         teacher_metrics["InstructorTier"] = teacher_metrics["TeacherRating"].apply(tier)
@@ -363,18 +395,28 @@ class AnalyticsEngine:
         for exp, grp in m.groupby("Expertise"):
             grp_clean = grp.dropna(subset=["TeacherRating", "CourseRating"])
             if len(grp_clean) >= settings.min_group_size:
-                if grp_clean["TeacherRating"].nunique() <= 1 or grp_clean["CourseRating"].nunique() <= 1:
+                if (
+                    grp_clean["TeacherRating"].nunique() <= 1
+                    or grp_clean["CourseRating"].nunique() <= 1
+                ):
                     r, p = np.nan, np.nan
                 else:
-                    r_val, p_val = stats.pearsonr(grp_clean["TeacherRating"], grp_clean["CourseRating"])
+                    r_val, p_val = stats.pearsonr(
+                        grp_clean["TeacherRating"], grp_clean["CourseRating"]
+                    )
                     r, p = round(float(r_val), 4), round(float(p_val), 6)
-                exp_corr.append({
-                    "Expertise": exp,
-                    "r": r,
-                    "p": p,
-                    "n": len(grp_clean),
-                })
-        exp_corr_df = pd.DataFrame(exp_corr).sort_values("r", ascending=False)
+                exp_corr.append(
+                    {
+                        "Expertise": exp,
+                        "r": r,
+                        "p": p,
+                        "n": len(grp_clean),
+                    }
+                )
+        if exp_corr:
+            exp_corr_df = pd.DataFrame(exp_corr).sort_values("r", ascending=False)
+        else:
+            exp_corr_df = pd.DataFrame(columns=["Expertise", "r", "p", "n"])
 
         # Expertise x CourseCategory heatmap
         exp_cat = (
@@ -399,23 +441,27 @@ class AnalyticsEngine:
         Pearson and Spearman correlation between TeacherRating and CourseRating.
         """
         df = self.master.dropna(subset=["TeacherRating", "CourseRating"])
-        r_p, p_p = stats.pearsonr(df["TeacherRating"], df["CourseRating"])
-        r_s, p_s = stats.spearmanr(df["TeacherRating"], df["CourseRating"])
-
-        # OLS slope
-        X = df[["TeacherRating"]].values
-        y = df["CourseRating"].values
-        reg = LinearRegression().fit(X, y)
-        slope = float(reg.coef_[0])
-        intercept = float(reg.intercept_)
+        if len(df) < 3 or df["TeacherRating"].nunique() < 2 or df["CourseRating"].nunique() < 2:
+            r_p, p_p = np.nan, np.nan
+            r_s, p_s = np.nan, np.nan
+            slope = np.nan
+            intercept = np.nan
+        else:
+            r_p, p_p = stats.pearsonr(df["TeacherRating"], df["CourseRating"])
+            r_s, p_s = stats.spearmanr(df["TeacherRating"], df["CourseRating"])
+            X = df[["TeacherRating"]].values
+            y = df["CourseRating"].values
+            reg = LinearRegression().fit(X, y)
+            slope = float(reg.coef_[0])
+            intercept = float(reg.intercept_)
 
         return {
-            "pearson_r": round(float(r_p), 4),
-            "pearson_p": round(float(p_p), 6),
-            "spearman_r": round(float(r_s), 4),
-            "spearman_p": round(float(p_s), 6),
-            "slope": round(slope, 6),
-            "intercept": round(intercept, 6),
+            "pearson_r": round(float(r_p), 4) if np.isfinite(r_p) else np.nan,
+            "pearson_p": round(float(p_p), 6) if np.isfinite(p_p) else np.nan,
+            "spearman_r": round(float(r_s), 4) if np.isfinite(r_s) else np.nan,
+            "spearman_p": round(float(p_s), 6) if np.isfinite(p_s) else np.nan,
+            "slope": round(slope, 6) if np.isfinite(slope) else np.nan,
+            "intercept": round(intercept, 6) if np.isfinite(intercept) else np.nan,
             "n": len(df),
         }
 
@@ -439,7 +485,9 @@ class AnalyticsEngine:
             Alias for config.
         """
         t0 = time.perf_counter()
-        cfg = cfg if cfg is not None else (config if config is not None else default_analysis_config)
+        cfg = (
+            cfg if cfg is not None else (config if config is not None else default_analysis_config)
+        )
 
         # Legacy 6 stages and KPIs (strictly preserved)
         legacy_kpis = self.kpi.compute_all_kpis()
@@ -535,10 +583,16 @@ class AnalyticsEngine:
                     min_pair_enrollment=min_enr,
                     fast_mode=True,
                 )
-                tt = teacher_table(self.teachers, self.master, attribution=attr, min_pair_enrollment=min_enr)
-                _ct = course_table(self.courses, self.master, attribution=attr, min_pair_enrollment=min_enr)
+                tt = teacher_table(
+                    self.teachers, self.master, attribution=attr, min_pair_enrollment=min_enr
+                )
+                _ct = course_table(
+                    self.courses, self.master, attribution=attr, min_pair_enrollment=min_enr
+                )
 
-                kpis_v2 = self.kpi.compute_all_kpis_v2(self.teachers, self.courses, teacher_df=tt, cfg=cfg)
+                kpis_v2 = self.kpi.compute_all_kpis_v2(
+                    self.teachers, self.courses, teacher_df=tt, cfg=cfg
+                )
 
                 # Teacher-course correlation with p-value and 95% CI
                 corr_res = correlation(
@@ -547,7 +601,9 @@ class AnalyticsEngine:
                     method="pearson",
                     alpha=cfg.alpha,
                 )
-                r_tc = float(corr_res["statistic"]) if np.isfinite(corr_res["statistic"]) else np.nan
+                r_tc = (
+                    float(corr_res["statistic"]) if np.isfinite(corr_res["statistic"]) else np.nan
+                )
                 p_tc = float(corr_res["p_value"]) if np.isfinite(corr_res["p_value"]) else np.nan
                 ci_tc = (float(corr_res["ci_low"]), float(corr_res["ci_high"]))
                 verdict = _make_verdict(p_tc, ci_tc, len(tt), cfg.min_group_size, cfg.alpha)
@@ -565,8 +621,8 @@ class AnalyticsEngine:
                     conclusion_status = "baseline (unchanged)"
                     conclusion_note = "Primary specification"
                 else:
-                    same_verdict = (verdict == base_verdict)
-                    same_sign = (np.sign(r_tc) == np.sign(base_r))
+                    same_verdict = verdict == base_verdict
+                    same_sign = np.sign(r_tc) == np.sign(base_r)
                     ci_overlap = not (ci_tc[1] < base_ci[0] or ci_tc[0] > base_ci[1])
                     is_unchanged = bool(same_verdict and same_sign and ci_overlap)
                     if is_unchanged:
@@ -579,24 +635,38 @@ class AnalyticsEngine:
                             "the same weight as pairs with hundreds of enrollments, distorting the correlation."
                         )
 
-                rows.append({
-                    "attribution": attr,
-                    "min_pair_enrollment": min_enr if min_enr is not None else 0,
-                    "avg_teacher_rating": round(kpis_v2["avg_teacher_rating"].value, 3),
-                    "avg_teacher_rating_status": "not attribution-dependent (intrinsic instructor attribute)",
-                    "avg_course_rating": round(kpis_v2["avg_course_rating"].value, 3),
-                    "avg_course_rating_status": "not attribution-dependent (intrinsic course attribute)",
-                    "rating_consistency_index": round(kpis_v2["rating_consistency_index"].value, 3),
-                    "rating_consistency_index_status": "not attribution-dependent (computed from instructor transactions)",
-                    "experience_slope_course": round(slope_cr, 4) if np.isfinite(slope_cr) else np.nan,
-                    "experience_slope_course_p": round(slope_p, 4) if np.isfinite(slope_p) else np.nan,
-                    "teacher_course_rating_corr": round(r_tc, 4) if np.isfinite(r_tc) else np.nan,
-                    "teacher_course_rating_p": round(p_tc, 4) if np.isfinite(p_tc) else np.nan,
-                    "teacher_course_rating_ci": (round(ci_tc[0], 4), round(ci_tc[1], 4)) if np.isfinite(ci_tc[0]) else (np.nan, np.nan),
-                    "teacher_course_rating_verdict": verdict,
-                    "conclusion_unchanged": conclusion_status,
-                    "conclusion_note": conclusion_note,
-                    "enrollment_influence_ratio": round(kpis_v2["enrollment_influence"].value, 3),
-                })
+                rows.append(
+                    {
+                        "attribution": attr,
+                        "min_pair_enrollment": min_enr if min_enr is not None else 0,
+                        "avg_teacher_rating": round(kpis_v2["avg_teacher_rating"].value, 3),
+                        "avg_teacher_rating_status": "not attribution-dependent (intrinsic instructor attribute)",
+                        "avg_course_rating": round(kpis_v2["avg_course_rating"].value, 3),
+                        "avg_course_rating_status": "not attribution-dependent (intrinsic course attribute)",
+                        "rating_consistency_index": round(
+                            kpis_v2["rating_consistency_index"].value, 3
+                        ),
+                        "rating_consistency_index_status": "not attribution-dependent (computed from instructor transactions)",
+                        "experience_slope_course": round(slope_cr, 4)
+                        if np.isfinite(slope_cr)
+                        else np.nan,
+                        "experience_slope_course_p": round(slope_p, 4)
+                        if np.isfinite(slope_p)
+                        else np.nan,
+                        "teacher_course_rating_corr": round(r_tc, 4)
+                        if np.isfinite(r_tc)
+                        else np.nan,
+                        "teacher_course_rating_p": round(p_tc, 4) if np.isfinite(p_tc) else np.nan,
+                        "teacher_course_rating_ci": (round(ci_tc[0], 4), round(ci_tc[1], 4))
+                        if np.isfinite(ci_tc[0])
+                        else (np.nan, np.nan),
+                        "teacher_course_rating_verdict": verdict,
+                        "conclusion_unchanged": conclusion_status,
+                        "conclusion_note": conclusion_note,
+                        "enrollment_influence_ratio": round(
+                            kpis_v2["enrollment_influence"].value, 3
+                        ),
+                    }
+                )
 
         return pd.DataFrame(rows)
