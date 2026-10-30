@@ -206,30 +206,46 @@ def bootstrap_ci(
 
     else:
         # Standard observation-level resampling
-        arr = np.asarray(data)
+        arr = np.asarray(data, dtype=float)
+        arr = arr[np.isfinite(arr)]
         n = len(arr)
         if n < 2:
             return (np.nan, np.nan)
 
-        boot_estimates = []
-        indices = np.arange(n)
-        for _ in range(n_boot):
-            boot_idx = rng.choice(indices, size=n, replace=True)
-            sample = arr[boot_idx]
-            try:
-                est = stat_fn(sample)
-                if np.isfinite(est):
-                    boot_estimates.append(est)
-            except Exception:
-                continue
+        if stat_fn is None or stat_fn in (np.mean, np.nanmean):
+            boot_matrix = rng.choice(arr, size=(n_boot, n), replace=True)
+            boot_estimates = np.mean(boot_matrix, axis=1)
+            return (
+                float(np.percentile(boot_estimates, q_low)),
+                float(np.percentile(boot_estimates, q_high)),
+            )
+        elif stat_fn in (np.median, np.nanmedian):
+            boot_matrix = rng.choice(arr, size=(n_boot, n), replace=True)
+            boot_estimates = np.median(boot_matrix, axis=1)
+            return (
+                float(np.percentile(boot_estimates, q_low)),
+                float(np.percentile(boot_estimates, q_high)),
+            )
+        else:
+            boot_estimates = []
+            indices = np.arange(n)
+            for _ in range(n_boot):
+                boot_idx = rng.choice(indices, size=n, replace=True)
+                sample = arr[boot_idx]
+                try:
+                    est = stat_fn(sample)
+                    if np.isfinite(est):
+                        boot_estimates.append(est)
+                except Exception:
+                    continue
 
-        if len(boot_estimates) < 30:
-            return (np.nan, np.nan)
+            if len(boot_estimates) < 30:
+                return (np.nan, np.nan)
 
-        return (
-            float(np.percentile(boot_estimates, q_low)),
-            float(np.percentile(boot_estimates, q_high)),
-        )
+            return (
+                float(np.percentile(boot_estimates, q_low)),
+                float(np.percentile(boot_estimates, q_high)),
+            )
 
 
 def kruskal_with_effect(*groups: Sequence[float] | np.ndarray | pd.Series) -> dict[str, Any]:
