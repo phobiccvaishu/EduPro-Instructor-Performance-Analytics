@@ -23,7 +23,7 @@ class AnalysisConfig:
     n_boot: int = 2000
     n_perm: int = 2000
     fast_mode: bool = False
-    fast_n_boot: int = 300
+    fast_n_boot: int = 200
     fast_n_perm: int = 0
     min_group_size: int = 3
     attribution: str = "enrollment_weighted"  # "enrollment_weighted" or "unweighted"
@@ -53,7 +53,7 @@ class Settings:
     default_seed: int = 20260601
     default_n_boot: int = 2000
     default_n_perm: int = 2000
-    fast_n_boot: int = 300
+    fast_n_boot: int = 200
     fast_n_perm: int = 0
     attribution_default: str = "enrollment_weighted"
     min_pair_enrollment_sensitivity: int = 3

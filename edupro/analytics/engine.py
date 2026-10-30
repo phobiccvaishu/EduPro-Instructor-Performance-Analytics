@@ -7,6 +7,7 @@ Provides complete analysis across Integration, Profiles, Experience, Quality, Im
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import numpy as np
@@ -14,8 +15,10 @@ import pandas as pd
 from scipy import stats
 from sklearn.linear_model import LinearRegression
 
+from edupro.analytics.aggregation import course_table, teacher_table
+from edupro.analytics.inference import run_all_inferences
 from edupro.analytics.kpis import KPIEngine
-from edupro.config import settings
+from edupro.config import AnalysisConfig, default_analysis_config, settings
 from edupro.data.validation import validate_mapping
 from edupro.logging_setup import get_logger
 
@@ -418,16 +421,131 @@ class AnalyticsEngine:
     # ------------------------------------------------------------------
     # Full analytics bundle
     # ------------------------------------------------------------------
-    def run_full_analysis(self) -> dict[str, Any]:
-        """Run all six stages + KPIs and return a single results dict."""
+    def run_full_analysis(self, config: AnalysisConfig | None = None) -> dict[str, Any]:
+        """
+        Run all six stages, legacy KPIs, revised entity aggregations,
+        and statistical hypothesis tests (F1-F13).
+
+        Parameters
+        ----------
+        config : AnalysisConfig, optional
+            Runtime configuration for statistical resampling and attribution.
+        """
+        t0 = time.perf_counter()
+        cfg = config if config is not None else default_analysis_config
+
+        # Legacy 6 stages and KPIs (strictly preserved)
+        legacy_kpis = self.kpi.compute_all_kpis()
+        per_inst_cons = self.kpi.per_instructor_consistency()
+        integ_summary = self.data_integration_summary()
+        inst_profiles = self.instructor_profiles()
+        exp_perf = self.experience_vs_performance()
+        course_qual = self.course_quality_evaluation()
+        inst_impact = self.instructor_impact()
+        exp_impact = self.expertise_performance()
+        teacher_course_corr = self.teacher_course_rating_correlation()
+
+        # Step 2 additions: Entity tables
+        tt = teacher_table(
+            self.teachers,
+            self.master,
+            attribution=cfg.attribution,
+            min_pair_enrollment=cfg.min_pair_enrollment,
+        )
+        ct = course_table(
+            self.courses,
+            self.master,
+            attribution=cfg.attribution,
+            min_pair_enrollment=cfg.min_pair_enrollment,
+        )
+
+        # Step 2 additions: KPI v2
+        kpis_v2 = self.kpi.compute_all_kpis_v2(
+            teachers=self.teachers,
+            courses=self.courses,
+            teacher_df=tt,
+            cfg=cfg,
+        )
+
+        # Step 2 additions: Inferences F1-F13
+        findings = run_all_inferences(
+            teachers=self.teachers,
+            courses=self.courses,
+            master=self.master,
+            teacher_df=tt,
+            course_df=ct,
+            cfg=cfg,
+        )
+
+        elapsed = time.perf_counter() - t0
+
         return {
-            "kpis": self.kpi.compute_all_kpis(),
-            "per_instructor_consistency": self.kpi.per_instructor_consistency(),
-            "integration_summary": self.data_integration_summary(),
-            "instructor_profiles": self.instructor_profiles(),
-            "experience_vs_performance": self.experience_vs_performance(),
-            "course_quality": self.course_quality_evaluation(),
-            "instructor_impact": self.instructor_impact(),
-            "expertise_performance": self.expertise_performance(),
-            "teacher_course_corr": self.teacher_course_rating_correlation(),
+            # Legacy outputs
+            "kpis": legacy_kpis,
+            "per_instructor_consistency": per_inst_cons,
+            "integration_summary": integ_summary,
+            "instructor_profiles": inst_profiles,
+            "experience_vs_performance": exp_perf,
+            "course_quality": course_qual,
+            "instructor_impact": inst_impact,
+            "expertise_performance": exp_impact,
+            "teacher_course_corr": teacher_course_corr,
+            # Statistical enhancements (Step 2)
+            "entity_tables": {"teachers": tt, "courses": ct},
+            "findings": findings,
+            "kpis_v2": kpis_v2,
+            "meta": {
+                "seed": cfg.seed,
+                "alpha": cfg.alpha,
+                "n_boot": cfg.effective_n_boot,
+                "n_perm": cfg.effective_n_perm,
+                "fast_mode": cfg.fast_mode,
+                "attribution": cfg.attribution,
+                "min_pair_enrollment": cfg.min_pair_enrollment,
+                "execution_time_seconds": round(elapsed, 3),
+                "version": "2.0",
+            },
         }
+
+    def run_sensitivity(
+        self,
+        attribution_modes: tuple[str, ...] = ("enrollment_weighted", "unweighted"),
+        min_enrollments: tuple[int | None, ...] = (None, 3),
+    ) -> pd.DataFrame:
+        """
+        Evaluate core analytical metrics across a 2x2 grid of attribution modes
+        and enrollment noise thresholds.
+        """
+        rows = []
+        for attr in attribution_modes:
+            for min_enr in min_enrollments:
+                cfg = AnalysisConfig(
+                    attribution=attr,
+                    min_pair_enrollment=min_enr,
+                    fast_mode=True,
+                )
+                tt = teacher_table(self.teachers, self.master, attribution=attr, min_pair_enrollment=min_enr)
+                _ct = course_table(self.courses, self.master, attribution=attr, min_pair_enrollment=min_enr)
+
+                kpis_v2 = self.kpi.compute_all_kpis_v2(self.teachers, self.courses, teacher_df=tt, cfg=cfg)
+
+                corr_clean = tt.dropna(subset=["TeacherRating", "weighted_course_rating"])
+                if len(corr_clean) >= 3:
+                    r_tc = float(stats.pearsonr(corr_clean["TeacherRating"], corr_clean["weighted_course_rating"]).statistic)
+                else:
+                    r_tc = np.nan
+
+                rows.append({
+                    "attribution": attr,
+                    "min_pair_enrollment": min_enr if min_enr is not None else 0,
+                    "avg_teacher_rating": round(kpis_v2["avg_teacher_rating"].value, 3),
+                    "avg_course_rating": round(kpis_v2["avg_course_rating"].value, 3),
+                    "rating_consistency_index": round(kpis_v2["rating_consistency_index"].value, 3),
+                    "experience_slope_course": round(
+                        kpis_v2["experience_impact"].extra.get("slope_on_course_rating", np.nan), 4
+                    ),
+                    "teacher_course_rating_corr": round(r_tc, 3) if np.isfinite(r_tc) else np.nan,
+                    "enrollment_influence_ratio": round(kpis_v2["enrollment_influence"].value, 3),
+                })
+
+        return pd.DataFrame(rows)
