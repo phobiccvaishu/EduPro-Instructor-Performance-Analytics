@@ -7,6 +7,7 @@ Renders unified widgets, handles reset state, and reports active scope counts.
 
 from __future__ import annotations
 
+import dataclasses
 from typing import Any
 
 import streamlit as st
@@ -25,17 +26,25 @@ def render_sidebar_filters(
     b = FilterBounds.from_dataset(dataset)
 
     if session_key not in st.session_state:
-        st.session_state[session_key] = FilterState.default(dataset)
+        init_state = FilterState.default(dataset)
+        preset = st.query_params.get("preset")
+        if preset == "narrow":
+            init_state = dataclasses.replace(
+                init_state,
+                course_category=("Data Science",),
+                experience_range=(5.0, 15.0),
+            )
+        st.session_state[session_key] = init_state
 
     curr: FilterState = st.session_state[session_key]
 
     with st.sidebar:
-        st.title("🎓 EduPro Analytics")
+        st.title("EduPro Analytics")
         st.caption("Instructor & Course Quality Dashboard")
         st.divider()
 
         # Reset all filters button
-        if st.button("🔄 Reset all filters", use_container_width=True):
+        if st.button("Reset all filters", width="stretch"):
             st.session_state[session_key] = FilterState.default(dataset)
             for k in [
                 "ui_sel_expertise",
