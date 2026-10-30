@@ -81,10 +81,14 @@ def correlation(
         # Clip r slightly away from +/- 1.0 to avoid arctanh infinity
         r_clipped = np.clip(r, -0.999999, 0.999999)
         z = np.arctanh(r_clipped)
-        se = 1.0 / np.sqrt(n - 3)
-        z_crit = stats.norm.ppf(1.0 - alpha / 2.0)
-        ci_low = float(np.tanh(z - z_crit * se))
-        ci_high = float(np.tanh(z + z_crit * se))
+        if n > 3:
+            se = 1.0 / np.sqrt(n - 3)
+            z_crit = stats.norm.ppf(1.0 - alpha / 2.0)
+            ci_low = float(np.tanh(z - z_crit * se))
+            ci_high = float(np.tanh(z + z_crit * se))
+        else:
+            ci_low = np.nan
+            ci_high = np.nan
 
         effect = get_correlation_effect(r)
         return {
