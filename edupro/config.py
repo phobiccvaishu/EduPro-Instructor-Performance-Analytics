@@ -30,6 +30,7 @@ class AnalysisConfig:
     min_pair_enrollment: int | None = None  # None for default; e.g. 3 for sensitivity runs
     robustness_retention_threshold: float = 0.75
     robustness_k: int = 3
+    fragile_evidence_cap: str = "Weak"
 
     @property
     def effective_n_boot(self) -> int:
@@ -61,6 +62,7 @@ class Settings:
     min_pair_enrollment_sensitivity: int = 3
     robustness_retention_threshold: float = 0.75
     robustness_k: int = 3
+    fragile_evidence_cap: str = "Weak"
     allowed_verdicts: tuple[str, ...] = (
         "supported",
         "not supported",

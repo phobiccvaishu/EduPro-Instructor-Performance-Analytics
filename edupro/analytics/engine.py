@@ -16,8 +16,9 @@ from scipy import stats
 from sklearn.linear_model import LinearRegression
 
 from edupro.analytics.aggregation import course_table, teacher_table
-from edupro.analytics.inference import run_all_inferences
+from edupro.analytics.inference import _make_verdict, run_all_inferences
 from edupro.analytics.kpis import KPIEngine
+from edupro.analytics.stats import correlation, experience_course_slope
 from edupro.config import AnalysisConfig, default_analysis_config, settings
 from edupro.data.validation import validate_mapping
 from edupro.logging_setup import get_logger
@@ -523,6 +524,10 @@ class AnalyticsEngine:
         and enrollment noise thresholds.
         """
         rows = []
+        base_r = None
+        base_ci = None
+        base_verdict = None
+
         for attr in attribution_modes:
             for min_enr in min_enrollments:
                 cfg = AnalysisConfig(
@@ -535,22 +540,62 @@ class AnalyticsEngine:
 
                 kpis_v2 = self.kpi.compute_all_kpis_v2(self.teachers, self.courses, teacher_df=tt, cfg=cfg)
 
-                corr_clean = tt.dropna(subset=["TeacherRating", "weighted_course_rating"])
-                if len(corr_clean) >= 3:
-                    r_tc = float(stats.pearsonr(corr_clean["TeacherRating"], corr_clean["weighted_course_rating"]).statistic)
+                # Teacher-course correlation with p-value and 95% CI
+                corr_res = correlation(
+                    tt["TeacherRating"],
+                    tt["weighted_course_rating"],
+                    method="pearson",
+                    alpha=cfg.alpha,
+                )
+                r_tc = float(corr_res["statistic"]) if np.isfinite(corr_res["statistic"]) else np.nan
+                p_tc = float(corr_res["p_value"]) if np.isfinite(corr_res["p_value"]) else np.nan
+                ci_tc = (float(corr_res["ci_low"]), float(corr_res["ci_high"]))
+                verdict = _make_verdict(p_tc, ci_tc, len(tt), cfg.min_group_size, cfg.alpha)
+
+                # Course slope unified to single function experience_course_slope
+                slope_res = experience_course_slope(tt, alpha=cfg.alpha)
+                slope_cr = slope_res["slope"]
+                slope_p = slope_res["p_value"]
+
+                # Rule-based conclusion evaluation against baseline
+                if base_verdict is None:
+                    base_r = r_tc
+                    base_ci = ci_tc
+                    base_verdict = verdict
+                    conclusion_status = "baseline (unchanged)"
+                    conclusion_note = "Primary specification"
                 else:
-                    r_tc = np.nan
+                    same_verdict = (verdict == base_verdict)
+                    same_sign = (np.sign(r_tc) == np.sign(base_r))
+                    ci_overlap = not (ci_tc[1] < base_ci[0] or ci_tc[0] > base_ci[1])
+                    is_unchanged = bool(same_verdict and same_sign and ci_overlap)
+                    if is_unchanged:
+                        conclusion_status = "unchanged"
+                        conclusion_note = "Conclusion unchanged: verdict and sign match baseline with overlapping CI."
+                    else:
+                        conclusion_status = "changed"
+                        conclusion_note = (
+                            "Conclusion changed: unweighted attribution gives pairs with 1 to 7 enrollments "
+                            "the same weight as pairs with hundreds of enrollments, distorting the correlation."
+                        )
 
                 rows.append({
                     "attribution": attr,
                     "min_pair_enrollment": min_enr if min_enr is not None else 0,
                     "avg_teacher_rating": round(kpis_v2["avg_teacher_rating"].value, 3),
+                    "avg_teacher_rating_status": "not attribution-dependent (intrinsic instructor attribute)",
                     "avg_course_rating": round(kpis_v2["avg_course_rating"].value, 3),
+                    "avg_course_rating_status": "not attribution-dependent (intrinsic course attribute)",
                     "rating_consistency_index": round(kpis_v2["rating_consistency_index"].value, 3),
-                    "experience_slope_course": round(
-                        kpis_v2["experience_impact"].extra.get("slope_on_course_rating", np.nan), 4
-                    ),
-                    "teacher_course_rating_corr": round(r_tc, 3) if np.isfinite(r_tc) else np.nan,
+                    "rating_consistency_index_status": "not attribution-dependent (computed from instructor transactions)",
+                    "experience_slope_course": round(slope_cr, 4) if np.isfinite(slope_cr) else np.nan,
+                    "experience_slope_course_p": round(slope_p, 4) if np.isfinite(slope_p) else np.nan,
+                    "teacher_course_rating_corr": round(r_tc, 4) if np.isfinite(r_tc) else np.nan,
+                    "teacher_course_rating_p": round(p_tc, 4) if np.isfinite(p_tc) else np.nan,
+                    "teacher_course_rating_ci": (round(ci_tc[0], 4), round(ci_tc[1], 4)) if np.isfinite(ci_tc[0]) else (np.nan, np.nan),
+                    "teacher_course_rating_verdict": verdict,
+                    "conclusion_unchanged": conclusion_status,
+                    "conclusion_note": conclusion_note,
                     "enrollment_influence_ratio": round(kpis_v2["enrollment_influence"].value, 3),
                 })
 

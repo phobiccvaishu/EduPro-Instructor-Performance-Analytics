@@ -506,3 +506,39 @@ def evidence_label(
         return "Weak"
     else:
         return "None"
+
+
+def experience_course_slope(
+    teacher_df: pd.DataFrame,
+    alpha: float = 0.05,
+) -> dict[str, float]:
+    """
+    Reconciled single source of truth for the OLS slope of weighted CourseRating
+    on YearsOfExperience at the teacher level (n=60).
+    """
+    import statsmodels.api as sm
+    from statsmodels.regression.linear_model import OLS
+
+    df = teacher_df.dropna(subset=["YearsOfExperience", "weighted_course_rating"]).copy()
+    if len(df) < 3:
+        return {
+            "slope": np.nan,
+            "se": np.nan,
+            "p_value": np.nan,
+            "ci_low": np.nan,
+            "ci_high": np.nan,
+            "n": float(len(df)),
+        }
+    x = df["YearsOfExperience"].to_numpy(dtype=float)
+    X = sm.add_constant(x)
+    y = df["weighted_course_rating"].to_numpy(dtype=float)
+    ols = OLS(y, X).fit()
+    ci = ols.conf_int(alpha=alpha)[1]
+    return {
+        "slope": float(ols.params[1]),
+        "se": float(ols.bse[1]),
+        "p_value": float(ols.pvalues[1]),
+        "ci_low": float(ci[0]),
+        "ci_high": float(ci[1]),
+        "n": float(len(df)),
+    }

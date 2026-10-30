@@ -26,6 +26,7 @@ from edupro.analytics.stats import (
     bootstrap_ci,
     correlation,
     evidence_label,
+    experience_course_slope,
     leave_k_out,
 )
 from edupro.config import AnalysisConfig, default_analysis_config, settings
@@ -284,7 +285,7 @@ class KPIEngine:
         Platform summary is the enrollment-weighted mean across instructors.
         Benchmarked against a null permutation test (shuffling CourseRating across pairs).
         """
-        m = self.master.copy()
+        m = self.master.reset_index(drop=True)
         if m.empty:
             return KPIResult("rating_consistency_index", 0.0, np.nan, np.nan, 0, "index (0–1)", "None", "", "")
 
@@ -396,6 +397,110 @@ class KPIEngine:
             },
         )
 
+    def experience_impact_teacher_rating(
+        self,
+        teacher_df: pd.DataFrame | None = None,
+        cfg: AnalysisConfig = default_analysis_config,
+    ) -> KPIResult:
+        """KPI 4a (v2): OLS slope of TeacherRating on YearsOfExperience (teacher level, n=60)."""
+        if teacher_df is not None:
+            tt = teacher_df
+        else:
+            teachers_unique = self.master.drop_duplicates(subset="TeacherID")
+            tt = teacher_table(teachers_unique, self.master)
+
+        df = tt.dropna(subset=["YearsOfExperience", "TeacherRating"]).copy()
+        n = len(df)
+        if n < 3:
+            return KPIResult(
+                name="experience_impact_teacher_rating",
+                value=0.0,
+                ci_low=np.nan,
+                ci_high=np.nan,
+                n=n,
+                unit="points/year",
+                evidence="Insufficient data",
+                definition="Annual rating increase per year of instructor teaching experience (OLS on TeacherRating).",
+                caveat="",
+                extra={"slope": np.nan, "ci": (np.nan, np.nan), "se": np.nan, "p_value": np.nan, "r": np.nan},
+            )
+
+        x = df["YearsOfExperience"].to_numpy(dtype=float)
+        X = sm.add_constant(x)
+        y_tr = df["TeacherRating"].to_numpy(dtype=float)
+        ols_tr = OLS(y_tr, X).fit()
+        slope_tr = float(ols_tr.params[1])
+        ci_tr_int = ols_tr.conf_int(alpha=cfg.alpha)[1]
+        slope_tr_ci = (float(ci_tr_int[0]), float(ci_tr_int[1]))
+        p_tr = float(ols_tr.pvalues[1])
+        corr_tr = correlation(x, y_tr, method="pearson", alpha=cfg.alpha)
+
+        ev = evidence_label(p_tr, n, slope_tr_ci, corr_tr["effect"], alpha=cfg.alpha)
+        return KPIResult(
+            name="experience_impact_teacher_rating",
+            value=slope_tr,
+            ci_low=slope_tr_ci[0],
+            ci_high=slope_tr_ci[1],
+            n=n,
+            unit="points/year",
+            evidence=ev,
+            definition="Annual rating increase per year of instructor teaching experience (OLS on TeacherRating).",
+            caveat="Experience strongly predicts teacher rating (r = +0.598, p < 0.0001).",
+            extra={
+                "slope": slope_tr,
+                "ci": slope_tr_ci,
+                "se": float(ols_tr.bse[1]),
+                "p_value": p_tr,
+                "r": corr_tr["statistic"],
+            },
+        )
+
+    def experience_impact_course_rating(
+        self,
+        teacher_df: pd.DataFrame | None = None,
+        cfg: AnalysisConfig = default_analysis_config,
+    ) -> KPIResult:
+        """KPI 4b (v2): OLS slope of weighted CourseRating on YearsOfExperience (teacher level, n=60)."""
+        if teacher_df is not None:
+            tt = teacher_df
+        else:
+            teachers_unique = self.master.drop_duplicates(subset="TeacherID")
+            tt = teacher_table(teachers_unique, self.master)
+
+        slope_info = experience_course_slope(tt, alpha=cfg.alpha)
+        n = int(slope_info.get("n", 0))
+        slope_cr = slope_info["slope"]
+        slope_cr_ci = (slope_info["ci_low"], slope_info["ci_high"])
+        p_cr = slope_info["p_value"]
+
+        df = tt.dropna(subset=["YearsOfExperience", "weighted_course_rating"]).copy()
+        if len(df) >= 3:
+            corr_cr = correlation(df["YearsOfExperience"], df["weighted_course_rating"], method="pearson", alpha=cfg.alpha)
+            ev = evidence_label(p_cr, n, slope_cr_ci, corr_cr["effect"], alpha=cfg.alpha)
+            r_val = corr_cr["statistic"]
+        else:
+            ev = "Insufficient data"
+            r_val = np.nan
+
+        return KPIResult(
+            name="experience_impact_course_rating",
+            value=slope_cr if np.isfinite(slope_cr) else 0.0,
+            ci_low=slope_cr_ci[0],
+            ci_high=slope_cr_ci[1],
+            n=n,
+            unit="points/year",
+            evidence=ev,
+            definition="Annual course quality rating change per year of teaching experience (OLS on weighted CourseRating).",
+            caveat="Teaching experience does not translate into higher course quality ratings (slope = -0.0035, p = 0.666).",
+            extra={
+                "slope": slope_cr,
+                "ci": slope_cr_ci,
+                "se": slope_info["se"],
+                "p_value": p_cr,
+                "r": r_val,
+            },
+        )
+
     def experience_impact_v2(
         self,
         teacher_df: pd.DataFrame | None = None,
@@ -406,59 +511,33 @@ class KPIEngine:
         (1) on TeacherRating: +X points/year (teacher level, n=60)
         (2) on CourseRating: +Y points/year (teacher level weighted course rating, n=60)
         """
-        if teacher_df is not None:
-            tt = teacher_df
-        else:
-            teachers_unique = self.master.drop_duplicates(subset="TeacherID")
-            tt = teacher_table(teachers_unique, self.master)
+        kpi_tr = self.experience_impact_teacher_rating(teacher_df, cfg)
+        kpi_cr = self.experience_impact_course_rating(teacher_df, cfg)
 
-        df = tt.dropna(subset=["YearsOfExperience", "TeacherRating", "weighted_course_rating"]).copy()
-        n = len(df)
-        x = df["YearsOfExperience"].to_numpy(dtype=float)
-        X = sm.add_constant(x)
-
-        # 1. Slope on TeacherRating
-        y_tr = df["TeacherRating"].to_numpy(dtype=float)
-        ols_tr = OLS(y_tr, X).fit()
-        slope_tr = float(ols_tr.params[1])
-        ci_tr_int = ols_tr.conf_int(alpha=cfg.alpha)[1]
-        slope_tr_ci = (float(ci_tr_int[0]), float(ci_tr_int[1]))
-        p_tr = float(ols_tr.pvalues[1])
-
-        # 2. Slope on CourseRating
-        y_cr = df["weighted_course_rating"].to_numpy(dtype=float)
-        ols_cr = OLS(y_cr, X).fit()
-        slope_cr = float(ols_cr.params[1])
-        ci_cr_int = ols_cr.conf_int(alpha=cfg.alpha)[1]
-        slope_cr_ci = (float(ci_cr_int[0]), float(ci_cr_int[1]))
-        p_cr = float(ols_cr.pvalues[1])
-
-        # Correlation values
-        corr_tr = correlation(x, y_tr, method="pearson", alpha=cfg.alpha)
-        corr_cr = correlation(x, y_cr, method="pearson", alpha=cfg.alpha)
-
-        ev = evidence_label(p_tr, n, slope_tr_ci, corr_tr["effect"], alpha=cfg.alpha)
+        p_tr = kpi_tr.extra.get("p_value", np.nan)
+        p_cr = kpi_cr.extra.get("p_value", np.nan)
+        disc_flag = bool(np.isfinite(p_tr) and np.isfinite(p_cr) and p_tr < cfg.alpha and p_cr >= cfg.alpha)
 
         return KPIResult(
             name="experience_impact",
-            value=slope_tr,
-            ci_low=slope_tr_ci[0],
-            ci_high=slope_tr_ci[1],
-            n=n,
+            value=kpi_tr.value,
+            ci_low=kpi_tr.ci_low,
+            ci_high=kpi_tr.ci_high,
+            n=kpi_tr.n,
             unit="points/year",
-            evidence=ev,
+            evidence=kpi_tr.evidence,
             definition="Annual rating increase per year of instructor teaching experience.",
             caveat="Experience strongly predicts teacher rating but has negligible translation into course quality.",
             extra={
-                "slope_on_teacher_rating": slope_tr,
-                "slope_on_teacher_rating_ci": slope_tr_ci,
+                "slope_on_teacher_rating": kpi_tr.value,
+                "slope_on_teacher_rating_ci": (kpi_tr.ci_low, kpi_tr.ci_high),
                 "p_value_teacher_rating": p_tr,
-                "r_teacher_rating": corr_tr["statistic"],
-                "slope_on_course_rating": slope_cr,
-                "slope_on_course_rating_ci": slope_cr_ci,
+                "r_teacher_rating": kpi_tr.extra.get("r", np.nan),
+                "slope_on_course_rating": kpi_cr.value,
+                "slope_on_course_rating_ci": (kpi_cr.ci_low, kpi_cr.ci_high),
                 "p_value_course_rating": p_cr,
-                "r_course_rating": corr_cr["statistic"],
-                "discrepancy_flag": bool(p_tr < cfg.alpha and p_cr >= cfg.alpha),
+                "r_course_rating": kpi_cr.extra.get("r", np.nan),
+                "discrepancy_flag": disc_flag,
             },
         )
 
@@ -540,6 +619,16 @@ class KPIEngine:
             tier_means[t_label] = round(m_val, 2)
 
         ev = evidence_label(0.001, n_total, ci, "moderate", alpha=cfg.alpha)
+        if robustness == "Fragile":
+            cap = cfg.fragile_evidence_cap
+            ev_order = ["None", "Weak", "Moderate", "Strong"]
+            if ev in ev_order and cap in ev_order and ev_order.index(ev) > ev_order.index(cap):
+                ev = cap
+
+        caveat = (
+            "Platform enrollments are sensitive to superstar concentration: "
+            "most of the High tier's enrollments come from 4 instructors (see leave-top-k sensitivity)."
+        )
 
         return KPIResult(
             name="enrollment_influence",
@@ -550,7 +639,7 @@ class KPIEngine:
             unit="ratio",
             evidence=ev,
             definition="Ratio of high-tier enrollment share to instructor population representation.",
-            caveat="Top superstar instructors skew platform volume; see leave-top-k sensitivity.",
+            caveat=caveat,
             extra={
                 "observed_ratio": ratio,
                 "high_tier_share": high_share,
@@ -568,15 +657,21 @@ class KPIEngine:
         teacher_df: pd.DataFrame | None = None,
         cfg: AnalysisConfig = default_analysis_config,
     ) -> dict[str, KPIResult]:
-        """Compute all 5 revised KPIs."""
+        """Compute revised KPIs including separate rows for experience slopes."""
         if teacher_df is None:
             teachers_unique = self.master.drop_duplicates(subset="TeacherID")
             teacher_df = teacher_table(teachers_unique, self.master)
+
+        exp_tr = self.experience_impact_teacher_rating(teacher_df, cfg)
+        exp_cr = self.experience_impact_course_rating(teacher_df, cfg)
+        exp_combined = self.experience_impact_v2(teacher_df, cfg)
 
         return {
             "avg_teacher_rating": self.avg_teacher_rating_v2(teachers, cfg),
             "avg_course_rating": self.avg_course_rating_v2(courses, cfg),
             "rating_consistency_index": self.rating_consistency_index_v2(teacher_df, cfg),
-            "experience_impact": self.experience_impact_v2(teacher_df, cfg),
+            "experience_impact_teacher_rating": exp_tr,
+            "experience_impact_course_rating": exp_cr,
+            "experience_impact": exp_combined,
             "enrollment_influence": self.enrollment_influence_v2(teacher_df, None, cfg),
         }

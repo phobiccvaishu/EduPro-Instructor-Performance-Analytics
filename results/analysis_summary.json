@@ -7,7 +7,7 @@
     "fast_mode": false,
     "attribution": "enrollment_weighted",
     "min_pair_enrollment": null,
-    "execution_time_seconds": 7.173,
+    "execution_time_seconds": 10.194,
     "version": "2.0"
   },
   "kpis_v2": {
@@ -58,6 +58,48 @@
         "n_instructors_evaluated": 60
       }
     },
+    "experience_impact_teacher_rating": {
+      "name": "experience_impact_teacher_rating",
+      "value": 0.12044429767181916,
+      "ci_low": 0.07801798966237938,
+      "ci_high": 0.16287060568125894,
+      "n": 60,
+      "unit": "points/year",
+      "evidence": "Strong",
+      "definition": "Annual rating increase per year of instructor teaching experience (OLS on TeacherRating).",
+      "caveat": "Experience strongly predicts teacher rating (r = +0.598, p < 0.0001).",
+      "extra": {
+        "slope": 0.12044429767181916,
+        "ci": [
+          0.07801798966237938,
+          0.16287060568125894
+        ],
+        "se": 0.021194953006845752,
+        "p_value": 4.5175788431532264e-07,
+        "r": 0.5980353982941562
+      }
+    },
+    "experience_impact_course_rating": {
+      "name": "experience_impact_course_rating",
+      "value": -0.003509530061306776,
+      "ci_low": -0.019697936008496474,
+      "ci_high": 0.012678875885882922,
+      "n": 60,
+      "unit": "points/year",
+      "evidence": "None",
+      "definition": "Annual course quality rating change per year of teaching experience (OLS on weighted CourseRating).",
+      "caveat": "Teaching experience does not translate into higher course quality ratings (slope = -0.0035, p = 0.666).",
+      "extra": {
+        "slope": -0.003509530061306776,
+        "ci": [
+          -0.019697936008496474,
+          0.012678875885882922
+        ],
+        "se": 0.008087258104808131,
+        "p_value": 0.6659289690316396,
+        "r": -0.056889190686538346
+      }
+    },
     "experience_impact": {
       "name": "experience_impact",
       "value": 0.12044429767181916,
@@ -93,9 +135,9 @@
       "ci_high": 6.257927827304672,
       "n": 60,
       "unit": "ratio",
-      "evidence": "Strong",
+      "evidence": "Weak",
       "definition": "Ratio of high-tier enrollment share to instructor population representation.",
-      "caveat": "Top superstar instructors skew platform volume; see leave-top-k sensitivity.",
+      "caveat": "Platform enrollments are sensitive to superstar concentration: most of the High tier's enrollments come from 4 instructors (see leave-top-k sensitivity).",
       "extra": {
         "observed_ratio": 3.7200000000000006,
         "high_tier_share": 0.682,
@@ -150,11 +192,18 @@
       "effect_label": "moderate",
       "evidence": "Weak",
       "verdict": "descriptive",
-      "notes": "Instructor ratings average 3.125 (median 3.275, IQR 1.340, skewness -0.485). Distribution departs from normality (Shapiro-Wilk W=0.962, p=0.0583).",
+      "notes": "Instructor ratings average 3.125 (median 3.275, IQR 1.340, five-number summary: min 1.050, Q1 2.487, median 3.275, Q3 3.827, max 4.970, skewness -0.485). Shapiro-Wilk normality test: W=0.962, p=0.0583.",
       "extra": {
         "mean": 3.1249999999999996,
         "median": 3.2750000000000004,
         "iqr": 1.3399999999999999,
+        "five_number_summary": {
+          "min": 1.05,
+          "q1": 2.4875,
+          "median": 3.2750000000000004,
+          "q3": 3.8274999999999997,
+          "max": 4.97
+        },
         "skewness": -0.48476811585703633,
         "shapiro_statistic": 0.9619067931830445,
         "shapiro_p": 0.05833821998391929,
@@ -313,7 +362,7 @@
       "effect_label": "large",
       "evidence": "Strong",
       "verdict": "supported",
-      "notes": "0-5 yrs (n=28, mean=2.399) vs 6+ yrs (n=32, mean=3.760): mean difference = +1.361 rating points [95% CI: 1.03, 1.70], Mann-Whitney U = 839.0, p = 7.1863e-09. The 0\u20135 vs 6+ group difference is supported, but a specific breakpoint is not supported (best candidate b*=8 yrs, delta-R2 = 0.0636, permutation p = 0.132).",
+      "notes": "0\u20135 yrs (n=28, mean=2.399) vs 6+ yrs (n=32, mean=3.760): mean difference = +1.361 rating points [95% CI: 1.03, 1.70], Mann-Whitney U = 839.0, p = 7.1863e-09 (large effect). The 0\u20135 vs 6+ group difference is supported, but a specific breakpoint is not supported (candidate b*=8 yrs, permutation p = 0.124).",
       "extra": {
         "two_group_contrast": {
           "n_0_to_5": 28,
@@ -333,24 +382,32 @@
             "p_value": 7.186286246084637e-09,
             "rank_biserial": -0.8727678571428572,
             "effect": "large"
-          },
+          }
+        },
+        "experience_groups": {
+          "n_low": 28,
+          "mean_low": 2.398928571428571,
+          "n_high": 32,
+          "mean_high": 3.7603124999999995,
+          "diff_mean": 1.3613839285714286,
+          "mann_whitney_u": 839.0,
+          "mann_whitney_p": 7.186286246084637e-09,
           "verdict": "supported"
         },
         "breakpoint_search": {
           "best_breakpoint": 8,
           "best_delta_r2": 0.06359287271150504,
-          "permutation_p": 0.13193403298350825,
+          "permutation_p": 0.12443778110944528,
           "slope_before": 0.21150423531273924,
           "slope_before_ci": [
-            0.14525901004682348,
-            0.29303955300915385
+            0.14175736189200758,
+            0.2928683738435727
           ],
           "slope_after": 0.047699543412282774,
           "slope_after_ci": [
-            -0.06250202484268497,
-            0.09054817394807117
+            -0.06036119825318493,
+            0.08868602079547519
           ],
-          "verdict": "not supported",
           "grid_results": {
             "3": {
               "r2": 0.35768601006089906,
@@ -392,6 +449,597 @@
               "r2": 0.38433992449071686,
               "delta_r2": 0.026693586877866826
             }
+          },
+          "lowess_curve": [
+            {
+              "x": 1.0,
+              "y": 2.606848395570779
+            },
+            {
+              "x": 1.0,
+              "y": 2.606848395570779
+            },
+            {
+              "x": 1.0,
+              "y": 2.606848395570779
+            },
+            {
+              "x": 1.0,
+              "y": 2.606848395570779
+            },
+            {
+              "x": 1.0,
+              "y": 2.606848395570779
+            },
+            {
+              "x": 1.0,
+              "y": 2.606848395570779
+            },
+            {
+              "x": 1.0,
+              "y": 2.606848395570779
+            },
+            {
+              "x": 2.0,
+              "y": 2.522782474138136
+            },
+            {
+              "x": 2.0,
+              "y": 2.522782474138136
+            },
+            {
+              "x": 2.0,
+              "y": 2.522782474138136
+            },
+            {
+              "x": 2.0,
+              "y": 2.522782474138136
+            },
+            {
+              "x": 2.0,
+              "y": 2.522782474138136
+            },
+            {
+              "x": 2.0,
+              "y": 2.522782474138136
+            },
+            {
+              "x": 3.0,
+              "y": 2.44244867507126
+            },
+            {
+              "x": 3.0,
+              "y": 2.44244867507126
+            },
+            {
+              "x": 3.0,
+              "y": 2.44244867507126
+            },
+            {
+              "x": 3.0,
+              "y": 2.44244867507126
+            },
+            {
+              "x": 3.0,
+              "y": 2.44244867507126
+            },
+            {
+              "x": 3.0,
+              "y": 2.44244867507126
+            },
+            {
+              "x": 4.0,
+              "y": 2.6167803076809264
+            },
+            {
+              "x": 4.0,
+              "y": 2.6167803076809264
+            },
+            {
+              "x": 4.0,
+              "y": 2.6167803076809264
+            },
+            {
+              "x": 4.0,
+              "y": 2.6167803076809264
+            },
+            {
+              "x": 4.0,
+              "y": 2.6167803076809264
+            },
+            {
+              "x": 4.0,
+              "y": 2.6167803076809264
+            },
+            {
+              "x": 4.0,
+              "y": 2.6167803076809264
+            },
+            {
+              "x": 5.0,
+              "y": 2.916234814556311
+            },
+            {
+              "x": 5.0,
+              "y": 2.916234814556311
+            },
+            {
+              "x": 6.0,
+              "y": 3.3079501922631436
+            },
+            {
+              "x": 6.0,
+              "y": 3.3079501922631436
+            },
+            {
+              "x": 6.0,
+              "y": 3.3079501922631436
+            },
+            {
+              "x": 6.0,
+              "y": 3.3079501922631436
+            },
+            {
+              "x": 6.0,
+              "y": 3.3079501922631436
+            },
+            {
+              "x": 6.0,
+              "y": 3.3079501922631436
+            },
+            {
+              "x": 6.0,
+              "y": 3.3079501922631436
+            },
+            {
+              "x": 6.0,
+              "y": 3.3079501922631436
+            },
+            {
+              "x": 7.0,
+              "y": 3.6016781681431893
+            },
+            {
+              "x": 7.0,
+              "y": 3.6016781681431893
+            },
+            {
+              "x": 7.0,
+              "y": 3.6016781681431893
+            },
+            {
+              "x": 7.0,
+              "y": 3.6016781681431893
+            },
+            {
+              "x": 7.0,
+              "y": 3.6016781681431893
+            },
+            {
+              "x": 7.0,
+              "y": 3.6016781681431893
+            },
+            {
+              "x": 7.0,
+              "y": 3.6016781681431893
+            },
+            {
+              "x": 8.0,
+              "y": 3.7798806928371813
+            },
+            {
+              "x": 8.0,
+              "y": 3.7798806928371813
+            },
+            {
+              "x": 8.0,
+              "y": 3.7798806928371813
+            },
+            {
+              "x": 9.0,
+              "y": 3.79333866458219
+            },
+            {
+              "x": 9.0,
+              "y": 3.79333866458219
+            },
+            {
+              "x": 9.0,
+              "y": 3.79333866458219
+            },
+            {
+              "x": 9.0,
+              "y": 3.79333866458219
+            },
+            {
+              "x": 10.0,
+              "y": 3.7525340628086172
+            },
+            {
+              "x": 11.0,
+              "y": 3.7016095488235985
+            },
+            {
+              "x": 12.0,
+              "y": 3.666611002045454
+            },
+            {
+              "x": 12.0,
+              "y": 3.666611002045454
+            },
+            {
+              "x": 12.0,
+              "y": 3.666611002045454
+            },
+            {
+              "x": 14.0,
+              "y": 3.728578640108491
+            },
+            {
+              "x": 14.0,
+              "y": 3.728578640108491
+            },
+            {
+              "x": 15.0,
+              "y": 3.857693053156594
+            },
+            {
+              "x": 21.0,
+              "y": 4.350398467581698
+            },
+            {
+              "x": 24.0,
+              "y": 4.5916324700741615
+            }
+          ]
+        },
+        "lowess_curve": [
+          {
+            "x": 1.0,
+            "y": 2.606848395570779
+          },
+          {
+            "x": 1.0,
+            "y": 2.606848395570779
+          },
+          {
+            "x": 1.0,
+            "y": 2.606848395570779
+          },
+          {
+            "x": 1.0,
+            "y": 2.606848395570779
+          },
+          {
+            "x": 1.0,
+            "y": 2.606848395570779
+          },
+          {
+            "x": 1.0,
+            "y": 2.606848395570779
+          },
+          {
+            "x": 1.0,
+            "y": 2.606848395570779
+          },
+          {
+            "x": 2.0,
+            "y": 2.522782474138136
+          },
+          {
+            "x": 2.0,
+            "y": 2.522782474138136
+          },
+          {
+            "x": 2.0,
+            "y": 2.522782474138136
+          },
+          {
+            "x": 2.0,
+            "y": 2.522782474138136
+          },
+          {
+            "x": 2.0,
+            "y": 2.522782474138136
+          },
+          {
+            "x": 2.0,
+            "y": 2.522782474138136
+          },
+          {
+            "x": 3.0,
+            "y": 2.44244867507126
+          },
+          {
+            "x": 3.0,
+            "y": 2.44244867507126
+          },
+          {
+            "x": 3.0,
+            "y": 2.44244867507126
+          },
+          {
+            "x": 3.0,
+            "y": 2.44244867507126
+          },
+          {
+            "x": 3.0,
+            "y": 2.44244867507126
+          },
+          {
+            "x": 3.0,
+            "y": 2.44244867507126
+          },
+          {
+            "x": 4.0,
+            "y": 2.6167803076809264
+          },
+          {
+            "x": 4.0,
+            "y": 2.6167803076809264
+          },
+          {
+            "x": 4.0,
+            "y": 2.6167803076809264
+          },
+          {
+            "x": 4.0,
+            "y": 2.6167803076809264
+          },
+          {
+            "x": 4.0,
+            "y": 2.6167803076809264
+          },
+          {
+            "x": 4.0,
+            "y": 2.6167803076809264
+          },
+          {
+            "x": 4.0,
+            "y": 2.6167803076809264
+          },
+          {
+            "x": 5.0,
+            "y": 2.916234814556311
+          },
+          {
+            "x": 5.0,
+            "y": 2.916234814556311
+          },
+          {
+            "x": 6.0,
+            "y": 3.3079501922631436
+          },
+          {
+            "x": 6.0,
+            "y": 3.3079501922631436
+          },
+          {
+            "x": 6.0,
+            "y": 3.3079501922631436
+          },
+          {
+            "x": 6.0,
+            "y": 3.3079501922631436
+          },
+          {
+            "x": 6.0,
+            "y": 3.3079501922631436
+          },
+          {
+            "x": 6.0,
+            "y": 3.3079501922631436
+          },
+          {
+            "x": 6.0,
+            "y": 3.3079501922631436
+          },
+          {
+            "x": 6.0,
+            "y": 3.3079501922631436
+          },
+          {
+            "x": 7.0,
+            "y": 3.6016781681431893
+          },
+          {
+            "x": 7.0,
+            "y": 3.6016781681431893
+          },
+          {
+            "x": 7.0,
+            "y": 3.6016781681431893
+          },
+          {
+            "x": 7.0,
+            "y": 3.6016781681431893
+          },
+          {
+            "x": 7.0,
+            "y": 3.6016781681431893
+          },
+          {
+            "x": 7.0,
+            "y": 3.6016781681431893
+          },
+          {
+            "x": 7.0,
+            "y": 3.6016781681431893
+          },
+          {
+            "x": 8.0,
+            "y": 3.7798806928371813
+          },
+          {
+            "x": 8.0,
+            "y": 3.7798806928371813
+          },
+          {
+            "x": 8.0,
+            "y": 3.7798806928371813
+          },
+          {
+            "x": 9.0,
+            "y": 3.79333866458219
+          },
+          {
+            "x": 9.0,
+            "y": 3.79333866458219
+          },
+          {
+            "x": 9.0,
+            "y": 3.79333866458219
+          },
+          {
+            "x": 9.0,
+            "y": 3.79333866458219
+          },
+          {
+            "x": 10.0,
+            "y": 3.7525340628086172
+          },
+          {
+            "x": 11.0,
+            "y": 3.7016095488235985
+          },
+          {
+            "x": 12.0,
+            "y": 3.666611002045454
+          },
+          {
+            "x": 12.0,
+            "y": 3.666611002045454
+          },
+          {
+            "x": 12.0,
+            "y": 3.666611002045454
+          },
+          {
+            "x": 14.0,
+            "y": 3.728578640108491
+          },
+          {
+            "x": 14.0,
+            "y": 3.728578640108491
+          },
+          {
+            "x": 15.0,
+            "y": 3.857693053156594
+          },
+          {
+            "x": 21.0,
+            "y": 4.350398467581698
+          },
+          {
+            "x": 24.0,
+            "y": 4.5916324700741615
+          }
+        ]
+      }
+    },
+    "F4a": {
+      "id": "F4a",
+      "question": "Do instructors with 6+ years of experience receive significantly higher ratings than instructors with 0\u20135 years?",
+      "method": "Two-group Mann-Whitney U test with bootstrap CI of mean difference",
+      "unit_of_analysis": "teacher",
+      "n": 60,
+      "statistic": 1.3613839285714286,
+      "ci_low": 1.0328649553571436,
+      "ci_high": 1.7017008928571424,
+      "p_value": 7.186286246084637e-09,
+      "effect_label": "large",
+      "evidence": "Strong",
+      "verdict": "supported",
+      "notes": "0\u20135 yrs (n=28, mean=2.399) vs 6+ yrs (n=32, mean=3.760): mean difference = +1.361 rating points [95% CI: 1.03, 1.70], Mann-Whitney U = 839.0, p = 7.1863e-09 (large effect).",
+      "extra": {
+        "n_0_to_5": 28,
+        "mean_0_to_5": 2.398928571428571,
+        "n_6_plus": 32,
+        "mean_6_plus": 3.7603124999999995,
+        "mean_diff": 1.3613839285714286,
+        "mean_diff_ci": [
+          1.0328649553571436,
+          1.7017008928571424
+        ],
+        "mann_whitney": {
+          "status": "ok",
+          "n1": 32,
+          "n2": 28,
+          "statistic": 839.0,
+          "p_value": 7.186286246084637e-09,
+          "rank_biserial": -0.8727678571428572,
+          "effect": "large"
+        }
+      }
+    },
+    "F4b": {
+      "id": "F4b",
+      "question": "Is there an optimal piecewise-linear breakpoint threshold in instructor ratings?",
+      "method": "Piecewise-linear OLS breakpoint search with permutation benchmark",
+      "unit_of_analysis": "teacher",
+      "n": 60,
+      "statistic": 8.0,
+      "ci_low": NaN,
+      "ci_high": NaN,
+      "p_value": 0.12443778110944528,
+      "effect_label": "small",
+      "evidence": "None",
+      "verdict": "not supported",
+      "notes": "Piecewise breakpoint search identified candidate b*=8 yrs (delta-R2 = 0.0636, slope pre = +0.212, slope post = +0.048), but permutation p = 0.124 >= 0.05 indicates no statistically significant breakpoint.",
+      "extra": {
+        "best_breakpoint": 8,
+        "best_delta_r2": 0.06359287271150504,
+        "permutation_p": 0.12443778110944528,
+        "slope_before": 0.21150423531273924,
+        "slope_before_ci": [
+          0.14175736189200758,
+          0.2928683738435727
+        ],
+        "slope_after": 0.047699543412282774,
+        "slope_after_ci": [
+          -0.06036119825318493,
+          0.08868602079547519
+        ],
+        "grid_results": {
+          "3": {
+            "r2": 0.35768601006089906,
+            "delta_r2": 3.9672448049032916e-05
+          },
+          "4": {
+            "r2": 0.3582004132783444,
+            "delta_r2": 0.000554075665494369
+          },
+          "5": {
+            "r2": 0.373714941488402,
+            "delta_r2": 0.01606860387555198
+          },
+          "6": {
+            "r2": 0.4040868779654585,
+            "delta_r2": 0.04644054035260847
+          },
+          "7": {
+            "r2": 0.4151613871849207,
+            "delta_r2": 0.05751504957207065
+          },
+          "8": {
+            "r2": 0.4212392103243551,
+            "delta_r2": 0.06359287271150504
+          },
+          "9": {
+            "r2": 0.4209338101849166,
+            "delta_r2": 0.06328747257206657
+          },
+          "10": {
+            "r2": 0.4081246233207162,
+            "delta_r2": 0.050478285707866166
+          },
+          "11": {
+            "r2": 0.39730681366022935,
+            "delta_r2": 0.03966047604737932
+          },
+          "12": {
+            "r2": 0.38433992449071686,
+            "delta_r2": 0.026693586877866826
           }
         },
         "lowess_curve": [
@@ -960,7 +1608,7 @@
     "F8": {
       "id": "F8",
       "question": "Do instructor ratings or course quality vary by gender and course level?",
-      "method": "Teacher-level Mann-Whitney U & Transaction-level cluster-bootstrapped cells",
+      "method": "Teacher-level Mann-Whitney U with Holm adjustment & Transaction-level cluster-bootstrapped cells",
       "unit_of_analysis": "teacher",
       "n": 60,
       "statistic": 551.0,
@@ -970,7 +1618,7 @@
       "effect_label": "small",
       "evidence": "None",
       "verdict": "not supported",
-      "notes": "(a) TeacherRating by Gender: Mann-Whitney U = 551.0, p = 0.119 (Females mean=3.23, Males mean=3.04). (b) Course quality by Gender: Mann-Whitney U = 254.0, p = 0.0045 (confounded by assignment distributions). (c) Transaction-level Gender x Level cells are purely descriptive.",
+      "notes": "(a) TeacherRating by Gender: Mann-Whitney U = 551.0, raw p = 0.119, Holm-adj p = 0.119 (not supported). (b) Course quality by Gender: Mann-Whitney U = 254.0, raw p = 0.0045, Holm-adj p = 0.0091 (Male higher; difference may reflect which courses each gender teaches and data cannot establish cause). (c) Transaction-level Gender x Level cells are descriptive.",
       "extra": {
         "f8a_teacher_rating_by_gender": {
           "status": "ok",
@@ -994,62 +1642,74 @@
           "Female_Advanced": {
             "gender": "Female",
             "course_level": "Advanced",
+            "n_teachers": 27,
             "cell_n_enrollments": 1788,
             "weighted_course_rating": 2.8001174496644294,
             "ci": [
               2.6335294421898623,
               2.883612627856004
-            ]
+            ],
+            "low_n_flag": false
           },
           "Female_Beginner": {
             "gender": "Female",
             "course_level": "Beginner",
+            "n_teachers": 27,
             "cell_n_enrollments": 1724,
             "weighted_course_rating": 3.102708816705336,
             "ci": [
               2.945206707181089,
               3.4137973363452065
-            ]
+            ],
+            "low_n_flag": false
           },
           "Female_Intermediate": {
             "gender": "Female",
             "course_level": "Intermediate",
+            "n_teachers": 27,
             "cell_n_enrollments": 1414,
             "weighted_course_rating": 3.3343352192362095,
             "ci": [
               2.944774592341855,
               3.4600431765332504
-            ]
+            ],
+            "low_n_flag": false
           },
           "Male_Advanced": {
             "gender": "Male",
             "course_level": "Advanced",
+            "n_teachers": 33,
             "cell_n_enrollments": 1687,
             "weighted_course_rating": 2.8390752815649076,
             "ci": [
               2.7525601039468044,
               3.012049143643647
-            ]
+            ],
+            "low_n_flag": false
           },
           "Male_Beginner": {
             "gender": "Male",
             "course_level": "Beginner",
+            "n_teachers": 33,
             "cell_n_enrollments": 1849,
             "weighted_course_rating": 3.3735911303407247,
             "ci": [
               3.231331853594569,
               3.4429722239414278
-            ]
+            ],
+            "low_n_flag": false
           },
           "Male_Intermediate": {
             "gender": "Male",
             "course_level": "Intermediate",
+            "n_teachers": 33,
             "cell_n_enrollments": 1538,
             "weighted_course_rating": 3.3387841352405725,
             "ci": [
               3.247812777195987,
               3.6634322847788923
-            ]
+            ],
+            "low_n_flag": false
           }
         },
         "teacher_rating_by_gender": {
@@ -1061,66 +1721,328 @@
           "rank_biserial": -0.2368125701459034,
           "effect": "small"
         },
+        "course_quality_by_gender": {
+          "status": "ok",
+          "n1": 27,
+          "n2": 33,
+          "statistic": 254.0,
+          "p_value": 0.004538990610126054,
+          "rank_biserial": 0.42985409652076323,
+          "effect": "moderate"
+        },
         "cell_level_cluster_bootstraps": {
           "Female_Advanced": {
             "gender": "Female",
             "course_level": "Advanced",
+            "n_teachers": 27,
             "cell_n_enrollments": 1788,
             "weighted_course_rating": 2.8001174496644294,
             "ci": [
               2.6335294421898623,
               2.883612627856004
-            ]
+            ],
+            "low_n_flag": false
           },
           "Female_Beginner": {
             "gender": "Female",
             "course_level": "Beginner",
+            "n_teachers": 27,
             "cell_n_enrollments": 1724,
             "weighted_course_rating": 3.102708816705336,
             "ci": [
               2.945206707181089,
               3.4137973363452065
-            ]
+            ],
+            "low_n_flag": false
           },
           "Female_Intermediate": {
             "gender": "Female",
             "course_level": "Intermediate",
+            "n_teachers": 27,
             "cell_n_enrollments": 1414,
             "weighted_course_rating": 3.3343352192362095,
             "ci": [
               2.944774592341855,
               3.4600431765332504
-            ]
+            ],
+            "low_n_flag": false
           },
           "Male_Advanced": {
             "gender": "Male",
             "course_level": "Advanced",
+            "n_teachers": 33,
             "cell_n_enrollments": 1687,
             "weighted_course_rating": 2.8390752815649076,
             "ci": [
               2.7525601039468044,
               3.012049143643647
-            ]
+            ],
+            "low_n_flag": false
           },
           "Male_Beginner": {
             "gender": "Male",
             "course_level": "Beginner",
+            "n_teachers": 33,
             "cell_n_enrollments": 1849,
             "weighted_course_rating": 3.3735911303407247,
             "ci": [
               3.231331853594569,
               3.4429722239414278
-            ]
+            ],
+            "low_n_flag": false
           },
           "Male_Intermediate": {
             "gender": "Male",
             "course_level": "Intermediate",
+            "n_teachers": 33,
             "cell_n_enrollments": 1538,
             "weighted_course_rating": 3.3387841352405725,
             "ci": [
               3.247812777195987,
               3.6634322847788923
-            ]
+            ],
+            "low_n_flag": false
+          }
+        }
+      }
+    },
+    "F8a": {
+      "id": "F8a",
+      "question": "Do instructor ratings (TeacherRating) differ significantly by gender?",
+      "method": "Teacher-level Mann-Whitney U test with Holm-Bonferroni family adjustment",
+      "unit_of_analysis": "teacher",
+      "n": 60,
+      "statistic": 551.0,
+      "ci_low": NaN,
+      "ci_high": NaN,
+      "p_value": 0.118695640007186,
+      "effect_label": "small",
+      "evidence": "None",
+      "verdict": "not supported",
+      "notes": "Females (n=27, mean=3.231, median=3.460) vs Males (n=33, mean=3.038, median=3.100): Mann-Whitney U = 551.0, raw p = 0.1187, Holm-adj p = 0.1187 (rank-biserial = -0.237, small effect).",
+      "extra": {
+        "n_female": 27,
+        "mean_female": 3.231111111111111,
+        "median_female": 3.46,
+        "n_male": 33,
+        "mean_male": 3.038181818181818,
+        "median_male": 3.1,
+        "raw_p_value": 0.118695640007186,
+        "holm_adj_p": 0.118695640007186,
+        "rank_biserial": -0.2368125701459034,
+        "mann_whitney": {
+          "status": "ok",
+          "n1": 27,
+          "n2": 33,
+          "statistic": 551.0,
+          "p_value": 0.118695640007186,
+          "rank_biserial": -0.2368125701459034,
+          "effect": "small"
+        }
+      }
+    },
+    "F8b": {
+      "id": "F8b",
+      "question": "Do course quality ratings differ between courses taught by female vs male instructors?",
+      "method": "Teacher-level Mann-Whitney U test on weighted CourseRating with Holm-Bonferroni adjustment",
+      "unit_of_analysis": "teacher",
+      "n": 60,
+      "statistic": 254.0,
+      "ci_low": -0.3392231605678758,
+      "ci_high": -0.05191564380347377,
+      "p_value": 0.009077981220252109,
+      "effect_label": "moderate",
+      "evidence": "Strong",
+      "verdict": "supported",
+      "notes": "Courses taught by Male instructors receive higher enrollment-weighted ratings (Male n=33, mean=3.247, median=3.237 vs Female n=27, mean=3.053, median=3.012). Mean difference (Female - Male) = -0.195 [95% CI: -0.339, -0.052], Mann-Whitney U = 254.0, raw p = 0.0045, Holm-adj p = 0.0091 (rank-biserial = 0.430, moderate effect). Difference may reflect which courses each gender teaches; the data cannot establish a cause.",
+      "extra": {
+        "higher_gender": "Male",
+        "n_female": 27,
+        "mean_female": 3.052702290835601,
+        "median_female": 3.0119148936170212,
+        "n_male": 33,
+        "mean_male": 3.247446074582776,
+        "median_male": 3.2365263157894733,
+        "diff_mean_female_minus_male": -0.19474378374717505,
+        "ci_diff_mean": [
+          -0.3392231605678758,
+          -0.05191564380347377
+        ],
+        "raw_p_value": 0.004538990610126054,
+        "holm_adj_p": 0.009077981220252109,
+        "rank_biserial": 0.42985409652076323,
+        "mann_whitney": {
+          "status": "ok",
+          "n1": 27,
+          "n2": 33,
+          "statistic": 254.0,
+          "p_value": 0.004538990610126054,
+          "rank_biserial": 0.42985409652076323,
+          "effect": "moderate"
+        }
+      }
+    },
+    "F8c": {
+      "id": "F8c",
+      "question": "What is the enrollment-weighted course quality across Gender x CourseLevel cells?",
+      "method": "Transaction-level aggregation with teacher-cluster bootstrap CIs",
+      "unit_of_analysis": "cell",
+      "n": 6,
+      "statistic": 6.0,
+      "ci_low": NaN,
+      "ci_high": NaN,
+      "p_value": NaN,
+      "effect_label": "moderate",
+      "evidence": "Moderate",
+      "verdict": "descriptive",
+      "notes": "Gender x Level table (6 cells): enrollment-weighted CourseRating with teacher-cluster bootstrap CIs. Differences describe portfolio allocation; data cannot establish causation.",
+      "extra": {
+        "cell_table": {
+          "Female_Advanced": {
+            "gender": "Female",
+            "course_level": "Advanced",
+            "n_teachers": 27,
+            "cell_n_enrollments": 1788,
+            "weighted_course_rating": 2.8001174496644294,
+            "ci": [
+              2.6335294421898623,
+              2.883612627856004
+            ],
+            "low_n_flag": false
+          },
+          "Female_Beginner": {
+            "gender": "Female",
+            "course_level": "Beginner",
+            "n_teachers": 27,
+            "cell_n_enrollments": 1724,
+            "weighted_course_rating": 3.102708816705336,
+            "ci": [
+              2.945206707181089,
+              3.4137973363452065
+            ],
+            "low_n_flag": false
+          },
+          "Female_Intermediate": {
+            "gender": "Female",
+            "course_level": "Intermediate",
+            "n_teachers": 27,
+            "cell_n_enrollments": 1414,
+            "weighted_course_rating": 3.3343352192362095,
+            "ci": [
+              2.944774592341855,
+              3.4600431765332504
+            ],
+            "low_n_flag": false
+          },
+          "Male_Advanced": {
+            "gender": "Male",
+            "course_level": "Advanced",
+            "n_teachers": 33,
+            "cell_n_enrollments": 1687,
+            "weighted_course_rating": 2.8390752815649076,
+            "ci": [
+              2.7525601039468044,
+              3.012049143643647
+            ],
+            "low_n_flag": false
+          },
+          "Male_Beginner": {
+            "gender": "Male",
+            "course_level": "Beginner",
+            "n_teachers": 33,
+            "cell_n_enrollments": 1849,
+            "weighted_course_rating": 3.3735911303407247,
+            "ci": [
+              3.231331853594569,
+              3.4429722239414278
+            ],
+            "low_n_flag": false
+          },
+          "Male_Intermediate": {
+            "gender": "Male",
+            "course_level": "Intermediate",
+            "n_teachers": 33,
+            "cell_n_enrollments": 1538,
+            "weighted_course_rating": 3.3387841352405725,
+            "ci": [
+              3.247812777195987,
+              3.6634322847788923
+            ],
+            "low_n_flag": false
+          }
+        },
+        "cell_level_cluster_bootstraps": {
+          "Female_Advanced": {
+            "gender": "Female",
+            "course_level": "Advanced",
+            "n_teachers": 27,
+            "cell_n_enrollments": 1788,
+            "weighted_course_rating": 2.8001174496644294,
+            "ci": [
+              2.6335294421898623,
+              2.883612627856004
+            ],
+            "low_n_flag": false
+          },
+          "Female_Beginner": {
+            "gender": "Female",
+            "course_level": "Beginner",
+            "n_teachers": 27,
+            "cell_n_enrollments": 1724,
+            "weighted_course_rating": 3.102708816705336,
+            "ci": [
+              2.945206707181089,
+              3.4137973363452065
+            ],
+            "low_n_flag": false
+          },
+          "Female_Intermediate": {
+            "gender": "Female",
+            "course_level": "Intermediate",
+            "n_teachers": 27,
+            "cell_n_enrollments": 1414,
+            "weighted_course_rating": 3.3343352192362095,
+            "ci": [
+              2.944774592341855,
+              3.4600431765332504
+            ],
+            "low_n_flag": false
+          },
+          "Male_Advanced": {
+            "gender": "Male",
+            "course_level": "Advanced",
+            "n_teachers": 33,
+            "cell_n_enrollments": 1687,
+            "weighted_course_rating": 2.8390752815649076,
+            "ci": [
+              2.7525601039468044,
+              3.012049143643647
+            ],
+            "low_n_flag": false
+          },
+          "Male_Beginner": {
+            "gender": "Male",
+            "course_level": "Beginner",
+            "n_teachers": 33,
+            "cell_n_enrollments": 1849,
+            "weighted_course_rating": 3.3735911303407247,
+            "ci": [
+              3.231331853594569,
+              3.4429722239414278
+            ],
+            "low_n_flag": false
+          },
+          "Male_Intermediate": {
+            "gender": "Male",
+            "course_level": "Intermediate",
+            "n_teachers": 33,
+            "cell_n_enrollments": 1538,
+            "weighted_course_rating": 3.3387841352405725,
+            "ci": [
+              3.247812777195987,
+              3.6634322847788923
+            ],
+            "low_n_flag": false
           }
         }
       }
@@ -1306,16 +2228,36 @@
       "question": "Do instructor ratings vary systematically across expertise domains?",
       "method": "Kruskal-Wallis H test across domains (reporting both min_group_size 2 and 3)",
       "unit_of_analysis": "teacher",
-      "n": 60,
-      "statistic": 15.670403947178306,
+      "n": 56,
+      "statistic": 15.19585061373924,
       "ci_low": NaN,
       "ci_high": NaN,
-      "p_value": 0.0740916747320005,
+      "p_value": 0.05544729240931272,
       "effect_label": "moderate",
       "evidence": "Weak",
       "verdict": "not supported",
-      "notes": "Kruskal-Wallis across expertise domains: [min_group_size=2, 10 groups, n=58]: H = 15.670 (df = 9, p = 0.0741, epsilon^2 = 0.139); [min_group_size=3, 9 groups, n=56]: H = 15.196 (df = 8, p = 0.0554, epsilon^2 = 0.153). Expertise area differences in TeacherRating are not statistically significant.",
+      "notes": "Kruskal-Wallis across expertise domains: [min_group_size=3 headline, 9 groups, n=56]: H = 15.196 (df = 8, p = 0.0554, epsilon^2 = 0.153); [min_group_size=2 secondary, 10 groups, n=58]: H = 15.670 (df = 9, p = 0.0741, epsilon^2 = 0.139). Expertise area differences in TeacherRating are not statistically significant.",
       "extra": {
+        "headline_min_group_size_3": {
+          "status": "ok",
+          "k": 9,
+          "n": 56,
+          "statistic": 15.19585061373924,
+          "p_value": 0.05544729240931272,
+          "epsilon_squared": 0.15310320454764342,
+          "effect": "moderate",
+          "df": 8
+        },
+        "secondary_min_group_size_2": {
+          "status": "ok",
+          "k": 10,
+          "n": 58,
+          "statistic": 15.670403947178306,
+          "p_value": 0.0740916747320005,
+          "epsilon_squared": 0.13896674889954805,
+          "effect": "moderate",
+          "df": 9
+        },
         "kruskal_min_group_size_2": {
           "status": "ok",
           "k": 10,
@@ -1389,21 +2331,25 @@
       "statistic": 0.3965110505600964,
       "ci_low": -0.06635390946502095,
       "ci_high": 0.4178401792382376,
-      "p_value": 0.001,
+      "p_value": 0.163,
       "effect_label": "moderate",
-      "evidence": "Weak",
-      "verdict": "inconclusive",
-      "notes": "Machine Learning Quality Contrast: ML category catalog average CourseRating (A) is 2.658 vs enrollment-weighted CourseRating of courses taught by ML instructors (B) of 3.055 (unweighted 2.946). The difference B - A is +0.397 [95% cluster CI: -0.066, 0.418]. The data cannot separate instructor competence from curriculum design. ML instructors' TeacherRating averages 4.234 (reported separately). Mean own-domain teaching share across platform is 74.0%.",
+      "evidence": "None",
+      "verdict": "not supported",
+      "notes": "Machine Learning Quality Contrast: ML category catalog average CourseRating (A, n=5) is 2.658 (held fixed) vs enrollment-weighted CourseRating of courses taught by ML instructors (B, n=5 teachers) of 3.055 (unweighted 2.946). Point estimate (B - A) is +0.397; teacher-cluster bootstrap distribution mean is 0.289 (offset due to small-cluster ratio estimation bias, n=5); 95% cluster CI is [-0.066, 0.418] and bootstrap two-sided p = 0.163 >= 0.05 (verdict: not supported). ML instructors' TeacherRating averages 4.234 (reported separately). Mean own-domain teaching share across platform is 74.0%.",
       "extra": {
         "ml_quality_gap": {
           "A_ml_category_catalog_cr": 2.6580000000000004,
+          "A_held_fixed": true,
           "B_ml_teachers_weighted_cr": 3.0545110505600968,
           "B_ml_teachers_unweighted_cr": 2.945670103092784,
           "B_minus_A": 0.3965110505600964,
+          "bootstrap_mean": 0.2887961804664417,
+          "offset_explanation": "Small-cluster ratio estimation bias (n=5 clusters)",
           "ci_B_minus_A": [
             -0.06635390946502095,
             0.4178401792382376
-          ]
+          ],
+          "bootstrap_p_value": 0.163
         },
         "ml_instructors_teacher_rating_mean": 4.234,
         "own_domain_share_mean": 0.7395751256534215,
@@ -1422,40 +2368,88 @@
       "attribution": "enrollment_weighted",
       "min_pair_enrollment": 0,
       "avg_teacher_rating": 3.125,
+      "avg_teacher_rating_status": "not attribution-dependent (intrinsic instructor attribute)",
       "avg_course_rating": 3.098,
+      "avg_course_rating_status": "not attribution-dependent (intrinsic course attribute)",
       "rating_consistency_index": 0.635,
+      "rating_consistency_index_status": "not attribution-dependent (computed from instructor transactions)",
       "experience_slope_course": -0.0035,
-      "teacher_course_rating_corr": 0.0,
+      "experience_slope_course_p": 0.6659,
+      "teacher_course_rating_corr": 0.0005,
+      "teacher_course_rating_p": 0.9971,
+      "teacher_course_rating_ci": [
+        -0.2535,
+        0.2544
+      ],
+      "teacher_course_rating_verdict": "not supported",
+      "conclusion_unchanged": "baseline (unchanged)",
+      "conclusion_note": "Primary specification",
       "enrollment_influence_ratio": 3.72
     },
     {
       "attribution": "enrollment_weighted",
       "min_pair_enrollment": 3,
       "avg_teacher_rating": 3.125,
+      "avg_teacher_rating_status": "not attribution-dependent (intrinsic instructor attribute)",
       "avg_course_rating": 3.098,
+      "avg_course_rating_status": "not attribution-dependent (intrinsic course attribute)",
       "rating_consistency_index": 0.635,
+      "rating_consistency_index_status": "not attribution-dependent (computed from instructor transactions)",
       "experience_slope_course": 0.0014,
-      "teacher_course_rating_corr": 0.052,
+      "experience_slope_course_p": 0.9058,
+      "teacher_course_rating_corr": 0.0518,
+      "teacher_course_rating_p": 0.6942,
+      "teacher_course_rating_ci": [
+        -0.2048,
+        0.3018
+      ],
+      "teacher_course_rating_verdict": "not supported",
+      "conclusion_unchanged": "unchanged",
+      "conclusion_note": "Conclusion unchanged: verdict and sign match baseline with overlapping CI.",
       "enrollment_influence_ratio": 3.932
     },
     {
       "attribution": "unweighted",
       "min_pair_enrollment": 0,
       "avg_teacher_rating": 3.125,
+      "avg_teacher_rating_status": "not attribution-dependent (intrinsic instructor attribute)",
       "avg_course_rating": 3.098,
+      "avg_course_rating_status": "not attribution-dependent (intrinsic course attribute)",
       "rating_consistency_index": 0.635,
+      "rating_consistency_index_status": "not attribution-dependent (computed from instructor transactions)",
       "experience_slope_course": -0.0067,
-      "teacher_course_rating_corr": -0.305,
+      "experience_slope_course_p": 0.2948,
+      "teacher_course_rating_corr": -0.3049,
+      "teacher_course_rating_p": 0.0178,
+      "teacher_course_rating_ci": [
+        -0.5187,
+        -0.0553
+      ],
+      "teacher_course_rating_verdict": "supported",
+      "conclusion_unchanged": "changed",
+      "conclusion_note": "Conclusion changed: unweighted attribution gives pairs with 1 to 7 enrollments the same weight as pairs with hundreds of enrollments, distorting the correlation.",
       "enrollment_influence_ratio": 3.72
     },
     {
       "attribution": "unweighted",
       "min_pair_enrollment": 3,
       "avg_teacher_rating": 3.125,
+      "avg_teacher_rating_status": "not attribution-dependent (intrinsic instructor attribute)",
       "avg_course_rating": 3.098,
+      "avg_course_rating_status": "not attribution-dependent (intrinsic course attribute)",
       "rating_consistency_index": 0.635,
+      "rating_consistency_index_status": "not attribution-dependent (computed from instructor transactions)",
       "experience_slope_course": 0.0065,
+      "experience_slope_course_p": 0.5457,
       "teacher_course_rating_corr": 0.01,
+      "teacher_course_rating_p": 0.9394,
+      "teacher_course_rating_ci": [
+        -0.2445,
+        0.2633
+      ],
+      "teacher_course_rating_verdict": "not supported",
+      "conclusion_unchanged": "unchanged",
+      "conclusion_note": "Conclusion unchanged: verdict and sign match baseline with overlapping CI.",
       "enrollment_influence_ratio": 3.932
     }
   ],
