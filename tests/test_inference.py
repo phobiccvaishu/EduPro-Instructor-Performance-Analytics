@@ -10,7 +10,7 @@ import pytest
 
 from edupro.analytics.aggregation import course_table, teacher_table
 from edupro.analytics.inference import Finding, run_all_inferences
-from edupro.config import AnalysisConfig
+from edupro.config import AnalysisConfig, settings
 from edupro.data.pipeline import load_all
 
 
@@ -33,7 +33,7 @@ class TestInferenceFramework:
         for fid, f in analysis_findings.items():
             assert isinstance(f, Finding)
             assert f.id == fid
-            assert f.verdict in ("supported", "not supported", "inconclusive", "insufficient data")
+            assert f.verdict in settings.allowed_verdicts
             assert f.evidence in ("Strong", "Moderate", "Weak", "None", "Insufficient data")
 
     def test_f1_distribution(self, analysis_findings: dict[str, Finding]) -> None:
