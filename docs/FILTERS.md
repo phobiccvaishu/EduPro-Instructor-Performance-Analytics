@@ -19,8 +19,8 @@ The architecture enforces five fundamental design principles:
 Data-derived boundary object calculated via `FilterBounds.from_dataset(dataset)`:
 - `teacher_rating_min`: `1.05` (`floor_2d(min(TeacherRating))`)
 - `teacher_rating_max`: `4.97` (`ceil_2d(max(TeacherRating))`)
-- `course_rating_min`: `1.12` (`floor_2d(min(CourseRating))`)
-- `course_rating_max`: `4.95` (`ceil_2d(max(CourseRating))`)
+- `course_rating_min`: `1.13` (`floor_2d(min(CourseRating))`)
+- `course_rating_max`: `4.94` (`ceil_2d(max(CourseRating))`)
 - `experience_min`: `1.0` (`floor_2d(min(YearsOfExperience))`)
 - `experience_max`: `24.0` (`ceil_2d(max(YearsOfExperience))`)
 - Categorical domain options: all unique sorted values of `Expertise` (12), `CourseCategory` (10), `CourseLevel` (3), and `Gender` (2).
@@ -32,7 +32,7 @@ Frozen, hashable dataclass storing active user selections:
 - `course_level`: `tuple[str, ...]` (empty tuple `()` = all selected / unconstrained)
 - `instructor_gender`: `tuple[str, ...]` (empty tuple `()` = all selected / unconstrained)
 - `teacher_rating_range`: `tuple[float, float]` (default: `(1.05, 4.97)`)
-- `course_rating_range`: `tuple[float, float]` (default: `(1.12, 4.95)`)
+- `course_rating_range`: `tuple[float, float]` (default: `(1.13, 4.94)`)
 - `experience_range`: `tuple[float, float]` (default: `(1.0, 24.0)`)
 
 Methods:
@@ -93,6 +93,8 @@ The following matrix defines the exact scope of every sidebar widget across plat
 | **Teacher Rating Range** | ✅ Live recomputed | ✅ Thresholded ranking table | ✅ Range-bound scatter | ✅ Filtered instructor pool | ✅ Filtered distribution boxes | ✅ Truncated x-axis pairs |
 | **Course Rating Range** | ✅ Live recomputed | ✅ Filtered course outcomes | ✅ Range-bound course slopes | ✅ Filtered heatmap/bubble | ✅ Truncated y-axis courses | ✅ Truncated y-axis pairs |
 | **Years of Experience** | ✅ Live recomputed | ✅ Filtered experience bracket | ✅ Truncated scatter & bands | ✅ Filtered instructor courses | ✅ Filtered domain experience | ✅ Filtered pair scatter |
+
+> **Verification Evidence**: Every cell in this matrix is verified by the parameterized integration test `test_filter_scope_matrix_coverage` in `tests/test_filters.py`, asserting that applying each filter induces measurable data mutations across `kpis_v2`, `teacher_table`, `experience_vs_performance`, `course_table`, `expertise_performance`, and `master`.
 
 ---
 
