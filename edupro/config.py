@@ -1,7 +1,7 @@
 """
 edupro.config
 =============
-Central configuration and domain constants for EduPro Analytics.
+Central configuration, statistical parameters, and domain constants for EduPro Analytics.
 """
 
 from __future__ import annotations
@@ -15,12 +15,48 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
 @dataclass(frozen=True)
+class AnalysisConfig:
+    """Runtime parameters for statistical analysis, resampling, and attribution."""
+
+    alpha: float = 0.05
+    seed: int = 20260601
+    n_boot: int = 2000
+    n_perm: int = 2000
+    fast_mode: bool = False
+    fast_n_boot: int = 300
+    fast_n_perm: int = 0
+    min_group_size: int = 3
+    attribution: str = "enrollment_weighted"  # "enrollment_weighted" or "unweighted"
+    min_pair_enrollment: int | None = None  # None for default; e.g. 3 for sensitivity runs
+
+    @property
+    def effective_n_boot(self) -> int:
+        """Effective bootstrap iterations respecting fast mode."""
+        return self.fast_n_boot if self.fast_mode else self.n_boot
+
+    @property
+    def effective_n_perm(self) -> int:
+        """Effective permutation iterations respecting fast mode."""
+        return self.fast_n_perm if self.fast_mode else self.n_perm
+
+
+@dataclass(frozen=True)
 class Settings:
     """Application configuration and analytical settings."""
 
     # File paths
     data_path_env_var: str = "EDUPRO_DATA_PATH"
     default_data_rel_path: str = "data/raw/EduPro_Online_Platform.xlsx"
+
+    # Statistical Defaults
+    default_alpha: float = 0.05
+    default_seed: int = 20260601
+    default_n_boot: int = 2000
+    default_n_perm: int = 2000
+    fast_n_boot: int = 300
+    fast_n_perm: int = 0
+    attribution_default: str = "enrollment_weighted"
+    min_pair_enrollment_sensitivity: int = 3
 
     # Rating scale
     min_rating: float = 1.0
@@ -83,4 +119,49 @@ class Settings:
             return self.tier_low_label
 
 
+def get_correlation_effect(r: float | None) -> str:
+    """Classify correlation effect size according to standard Cohen benchmarks."""
+    if r is None or r != r:
+        return "undefined"
+    abs_r = abs(r)
+    if abs_r < 0.10:
+        return "negligible"
+    elif abs_r < 0.30:
+        return "small"
+    elif abs_r < 0.50:
+        return "moderate"
+    else:
+        return "large"
+
+
+def get_epsilon_squared_effect(eps: float | None) -> str:
+    """Classify Kruskal-Wallis epsilon-squared effect size."""
+    if eps is None or eps != eps:
+        return "undefined"
+    if eps < 0.01:
+        return "negligible"
+    elif eps < 0.08:
+        return "small"
+    elif eps < 0.26:
+        return "moderate"
+    else:
+        return "large"
+
+
+def get_rank_biserial_effect(r_rb: float | None) -> str:
+    """Classify Mann-Whitney rank-biserial correlation effect size."""
+    if r_rb is None or r_rb != r_rb:
+        return "undefined"
+    abs_r = abs(r_rb)
+    if abs_r < 0.10:
+        return "negligible"
+    elif abs_r < 0.30:
+        return "small"
+    elif abs_r < 0.50:
+        return "moderate"
+    else:
+        return "large"
+
+
 settings = Settings()
+default_analysis_config = AnalysisConfig()
