@@ -4,14 +4,28 @@ This document tracks known analytical, statistical, architectural, UI, and repor
 
 ---
 
-## Step 2 — Statistical Rigor & Analytical Methodology
+## Step 2 — Statistical Rigor & Analytical Methodology (Resolved in Step 2)
 
-- **[STEP-2-001] Pseudo-Replication & Invalid P-Values**: The master dataset comprises $n = 887$ instructor-course pairs derived from only 60 distinct teachers and 60 distinct courses. Because courses and teachers are repeatedly observed across pairs, observations are not independent. Classical asymptotic standard errors and p-values based on $n = 887$ are invalid due to pseudo-replication. Clustered standard errors, mixed-effects models, or instructor/course-level aggregation are required.
-- **[STEP-2-002] Experience Impact Score Formulation**: The current formula computes the arithmetic mean of two distinct correlations: $|r(\text{Experience}, \text{TeacherRating})|$ and $|r(\text{Experience}, \text{CourseRating})|$. Combining an instructor-level trait with a course-level trait across pseudo-replicated pairs obscures the fact that course ratings do not correlate with instructor experience ($r = -0.0131$).
-- **[STEP-2-003] Rating Consistency Index Dispersion**: The Rating Consistency Index ($1 - \sigma / \mu$) exhibits minimal variance across instructors (ranging only from 0.51 to 0.77). This metric largely reflects the platform course mix rather than individual instructor reliability.
-- **[STEP-2-004] Enrollment Influence Confounding**: The enrollment influence ratio (3.72) is heavily driven by 4 outlier instructors in Machine Learning and Cybersecurity. At the instructor level, Spearman correlation between teacher rating and total enrollment is negligible ($\rho \approx -0.01$).
-- **[STEP-2-005] Insignificant Category and Level Differences**: Differences in course ratings across categories and levels are statistically insignificant (Kruskal-Wallis $p = 0.96$ for category, $p = 0.38$ for level).
-- **[STEP-2-006] Low-Rated Tier Aggregation Pooling**: The "low-rated 64.9 average enrollment" calculation currently pools Mid (3.0–3.9) and Low (<3.0) tiers together rather than isolating the true Low tier.
+- **[STEP-2-001] [RESOLVED] Pseudo-Replication & Invalid P-Values**: Resolved via `edupro.analytics.aggregation` and `inference.py`. All inferential statistics are conducted at the true observational units: teacher level ($n = 60$), course catalog level ($n = 60$), or cluster-robust standard errors clustering on `TeacherID`.
+- **[STEP-2-002] [RESOLVED] Experience Impact Score Formulation**: Resolved via `experience_impact_v2` and Finding `F2`/`F3`. Reports two decoupled slopes: teacher rating slope (+0.120 points/yr, $p < 0.001$) and course quality slope (-0.002 points/yr, $p = 0.696$).
+- **[STEP-2-003] [RESOLVED] Rating Consistency Index Dispersion**: Resolved via `rating_consistency_index_v2`. Employs instructor-weighted consistency ($1 - \text{CV}_{weighted}$) benchmarked against permutation test on shuffled course assignments.
+- **[STEP-2-004] [RESOLVED] Enrollment Influence Confounding**: Resolved via `enrollment_influence_v2` and Finding `F10`/`F11`. Implements bootstrap CIs, leave-top-$k$-out sensitivity testing, and domain-controlled OLS regression with HC3 robust standard errors.
+- **[STEP-2-005] [RESOLVED] Insignificant Category and Level Differences**: Resolved via Findings `F6` and `F7`. Kurskal-Wallis tests report epsilon-squared effect sizes and gate post-hoc pairwise testing with Holm adjustments only when omnibus test is significant.
+- **[STEP-2-006] [RESOLVED] Low-Rated Tier Aggregation Pooling**: Resolved via `enrollment_influence_v2` and `teacher_table`. Isolates High ($\ge 4.0$), Mid ($3.0-3.9$), and Low ($< 3.0$) tiers with discrete per-tier mean enrollments.
+
+---
+
+## Step 4 Deprecation Backlog (Legacy Keys Scheduled for Removal in Step 4)
+
+The following legacy keys and methods are marked deprecated in Step 2 and scheduled for decommissioning in Step 4:
+- `KPIEngine.avg_teacher_rating()` -> migrate to `avg_teacher_rating_v2()`
+- `KPIEngine.avg_course_rating()` -> migrate to `avg_course_rating_v2()`
+- `KPIEngine.rating_consistency_index()` -> migrate to `rating_consistency_index_v2()`
+- `KPIEngine.experience_impact_score()` -> migrate to `experience_impact_v2()`
+- `KPIEngine.enrollment_influence_ratio()` -> migrate to `enrollment_influence_v2()`
+- `KPIEngine.compute_all_kpis()` -> migrate to `compute_all_kpis_v2()`
+- Legacy keys in `AnalyticsEngine.run_full_analysis()` dictionary:
+  `"kpis"`, `"experience_vs_performance"`, `"course_quality"`, `"instructor_impact"`, `"expertise_performance"`, `"teacher_course_corr"`.
 
 ---
 
