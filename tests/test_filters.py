@@ -9,7 +9,19 @@ from __future__ import annotations
 
 import pytest
 
-from edupro.filters import FilterBounds, FilterState, apply_filters
+from edupro.analytics.engine import AnalyticsEngine
+from edupro.config import AnalysisConfig
+from edupro.filters import FilterBounds, FilterState, apply_filters, ceil_2d, floor_2d
+
+
+def test_floor_ceil_2d_precision():
+    """Verify floor_2d and ceil_2d do not suffer IEEE 754 precision issues on 2-decimal inputs."""
+    assert floor_2d(1.13) == 1.13
+    assert ceil_2d(4.94) == 4.94
+    assert floor_2d(1.05) == 1.05
+    assert ceil_2d(4.97) == 4.97
+    assert floor_2d(1.1299999999999999) == 1.13
+    assert ceil_2d(4.940000000000001) == 4.94
 
 
 def test_slider_bounds_cover_min_and_max_exactly(dataset):
@@ -25,9 +37,11 @@ def test_slider_bounds_cover_min_and_max_exactly(dataset):
     assert b.course_rating_min <= cr_min
     assert b.course_rating_max >= cr_max
 
-    # Exact checks for previously truncated records
-    assert b.teacher_rating_min <= 1.05
-    assert b.course_rating_max >= 4.94
+    # Exact equality checks for dataset bounds
+    assert b.teacher_rating_min == 1.05
+    assert b.teacher_rating_max == 4.97
+    assert b.course_rating_min == 1.13
+    assert b.course_rating_max == 4.94
 
 
 def test_default_filter_is_identity(dataset):
@@ -137,3 +151,73 @@ def test_inverted_ranges_rejected():
         FilterState(course_rating_range=(4.0, 1.0))
     with pytest.raises(ValueError):
         FilterState(experience_range=(20.0, 5.0))
+
+
+@pytest.mark.parametrize(
+    "filter_name,filter_state",
+    [
+        ("expertise", FilterState(expertise=("Machine Learning",))),
+        ("course_category", FilterState(course_category=("Web Development",))),
+        ("course_level", FilterState(course_level=("Advanced",))),
+        ("instructor_gender", FilterState(instructor_gender=("Female",))),
+        ("teacher_rating_range", FilterState(teacher_rating_range=(3.0, 4.97))),
+        ("course_rating_range", FilterState(course_rating_range=(3.0, 4.94))),
+        ("experience_range", FilterState(experience_range=(5.0, 24.0))),
+    ],
+)
+def test_filter_scope_matrix_coverage(dataset, filter_name, filter_state):
+    """Verify that every filter causes a measurable update across all 6 UI functional areas."""
+    cfg = AnalysisConfig(fast_mode=True)
+    base_view = apply_filters(dataset, FilterState.default(dataset))
+    base_res = AnalyticsEngine(
+        base_view.master,
+        base_view.teachers,
+        base_view.courses,
+        base_view.transactions,
+    ).run_full_analysis(cfg=cfg)
+
+    view = apply_filters(dataset, filter_state)
+    res = AnalyticsEngine(
+        view.master,
+        view.teachers,
+        view.courses,
+        view.transactions,
+    ).run_full_analysis(cfg=cfg)
+
+    # 1. Platform KPIs
+    kpis_changed = (
+        res["kpis_v2"]["avg_teacher_rating"].value
+        != base_res["kpis_v2"]["avg_teacher_rating"].value
+        or res["kpis_v2"]["avg_course_rating"].value
+        != base_res["kpis_v2"]["avg_course_rating"].value
+        or view.counts["n_enrollments"] != base_view.counts["n_enrollments"]
+    )
+    assert kpis_changed, f"KPIs did not change for {filter_name}"
+
+    # 2. Tab 1: Instructor Rankings (view.teacher_table)
+    tab1_changed = not view.teacher_table.equals(base_view.teacher_table)
+    assert tab1_changed, f"Tab 1 (teacher_table) did not change for {filter_name}"
+
+    # 3. Tab 2: Experience & Ratings (evp group_avg, pearson_r_course, or teacher_table)
+    tab2_changed = (
+        not view.teacher_table.equals(base_view.teacher_table)
+        or res["experience_vs_performance"]["pearson_r_course"]
+        != base_res["experience_vs_performance"]["pearson_r_course"]
+    )
+    assert tab2_changed, f"Tab 2 (experience vs performance) did not change for {filter_name}"
+
+    # 4. Tab 3: Course Quality Maps (view.course_table or cq by_category)
+    tab3_changed = not view.course_table.equals(base_view.course_table)
+    assert tab3_changed, f"Tab 3 (course_table) did not change for {filter_name}"
+
+    # 5. Tab 4: Domain Analysis (ep exp_teacher or exp_course)
+    tab4_changed = not res["expertise_performance"]["exp_teacher"].equals(
+        base_res["expertise_performance"]["exp_teacher"]
+    ) or not res["expertise_performance"]["exp_course"].equals(
+        base_res["expertise_performance"]["exp_course"]
+    )
+    assert tab4_changed, f"Tab 4 (domain analysis) did not change for {filter_name}"
+
+    # 6. Tab 5: Rating Relationships (view.master pair dataset)
+    tab5_changed = not view.master.equals(base_view.master)
+    assert tab5_changed, f"Tab 5 (master pair data) did not change for {filter_name}"

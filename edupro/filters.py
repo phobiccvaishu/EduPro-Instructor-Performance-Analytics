@@ -28,8 +28,8 @@ Semantics
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
+from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal
 from typing import Any
 
 import pandas as pd
@@ -38,13 +38,15 @@ from edupro.analytics.aggregation import course_table, teacher_table
 
 
 def floor_2d(val: float) -> float:
-    """Floor a float to 2 decimal places with precision guarding."""
-    return math.floor(round(float(val), 4) * 100.0) / 100.0
+    """Floor a float to 2 decimal places with decimal precision guarding."""
+    d = Decimal(str(round(float(val), 6)))
+    return float(d.quantize(Decimal("0.01"), rounding=ROUND_FLOOR))
 
 
 def ceil_2d(val: float) -> float:
-    """Ceil a float to 2 decimal places with precision guarding."""
-    return math.ceil(round(float(val), 4) * 100.0) / 100.0
+    """Ceil a float to 2 decimal places with decimal precision guarding."""
+    d = Decimal(str(round(float(val), 6)))
+    return float(d.quantize(Decimal("0.01"), rounding=ROUND_CEILING))
 
 
 @dataclass(frozen=True)
@@ -106,7 +108,7 @@ class FilterState:
     course_level: tuple[str, ...] = ()
     instructor_gender: tuple[str, ...] = ()
     teacher_rating_range: tuple[float, float] = (1.05, 4.97)
-    course_rating_range: tuple[float, float] = (1.12, 4.95)
+    course_rating_range: tuple[float, float] = (1.13, 4.94)
     experience_range: tuple[float, float] = (1.0, 24.0)
 
     def __post_init__(self) -> None:
