@@ -421,7 +421,11 @@ class AnalyticsEngine:
     # ------------------------------------------------------------------
     # Full analytics bundle
     # ------------------------------------------------------------------
-    def run_full_analysis(self, config: AnalysisConfig | None = None) -> dict[str, Any]:
+    def run_full_analysis(
+        self,
+        config: AnalysisConfig | None = None,
+        cfg: AnalysisConfig | None = None,
+    ) -> dict[str, Any]:
         """
         Run all six stages, legacy KPIs, revised entity aggregations,
         and statistical hypothesis tests (F1-F13).
@@ -430,9 +434,11 @@ class AnalyticsEngine:
         ----------
         config : AnalysisConfig, optional
             Runtime configuration for statistical resampling and attribution.
+        cfg : AnalysisConfig, optional
+            Alias for config.
         """
         t0 = time.perf_counter()
-        cfg = config if config is not None else default_analysis_config
+        cfg = cfg if cfg is not None else (config if config is not None else default_analysis_config)
 
         # Legacy 6 stages and KPIs (strictly preserved)
         legacy_kpis = self.kpi.compute_all_kpis()
