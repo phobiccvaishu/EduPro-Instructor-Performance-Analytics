@@ -7,7 +7,7 @@
     "fast_mode": false,
     "attribution": "enrollment_weighted",
     "min_pair_enrollment": null,
-    "execution_time_seconds": 9.005,
+    "execution_time_seconds": 7.173,
     "version": "2.0"
   },
   "kpis_v2": {
@@ -50,10 +50,11 @@
       "unit": "index (0\u20131)",
       "evidence": "None",
       "definition": "Enrollment-weighted mean of per-instructor course quality consistency (1 - CV_weighted).",
-      "caveat": "Instructors teaching a wider diversity of subjects naturally display wider variation.",
+      "caveat": "Instructor-to-instructor differences do not exceed chance (permutation p = 0.406), so the index describes portfolio mix rather than instructor reliability.",
       "extra": {
         "permutation_benchmark_mean": 0.6324779305101468,
         "permutation_p_value": 0.4065,
+        "permutation_p": 0.4065,
         "n_instructors_evaluated": 60
       }
     },
@@ -126,7 +127,7 @@
             "n": 56
           }
         },
-        "robustness": "Robust",
+        "robustness": "Fragile",
         "per_tier_mean_enrollments": {
           "High (\u22654.0)": 620.0,
           "Mid (3.0\u20133.9)": 56.29,
@@ -148,8 +149,8 @@
       "p_value": 0.05833821998391929,
       "effect_label": "moderate",
       "evidence": "Weak",
-      "verdict": "inconclusive",
-      "notes": "Instructor ratings average 3.12 (median 3.28, IQR 1.34, skewness -0.48). Shapiro-Wilk normality test: W=0.962, p=0.0583.",
+      "verdict": "descriptive",
+      "notes": "Instructor ratings average 3.125 (median 3.275, IQR 1.340, skewness -0.485). Distribution departs from normality (Shapiro-Wilk W=0.962, p=0.0583).",
       "extra": {
         "mean": 3.1249999999999996,
         "median": 3.2750000000000004,
@@ -266,7 +267,7 @@
       "effect_label": "negligible",
       "evidence": "None",
       "verdict": "not supported",
-      "notes": "At teacher level (n=60), experience vs weighted course rating is r = -0.057 (p = 0.6659, negligible effect). At pair level (n=887), naive p-value is 6.9602e-01, but cluster-robust standard errors yield p = 0.3566.",
+      "notes": "At teacher level (n=60), experience vs weighted course rating is r = -0.057 (p = 0.6659, negligible effect). At pair level (n=887), naive p-value is 0.6960, and cluster-robust standard errors yield slope = -0.0024 (p = 0.3566).",
       "extra": {
         "teacher_level": {
           "status": "ok",
@@ -302,23 +303,27 @@
     "F4": {
       "id": "F4",
       "question": "Is there an experience threshold or nonlinear plateau in instructor ratings?",
-      "method": "Two-group Mann-Whitney U, Piecewise OLS threshold search, LOWESS smoother",
+      "method": "Two-group Mann-Whitney U, Piecewise OLS breakpoint search, LOWESS smoother",
       "unit_of_analysis": "teacher",
       "n": 60,
       "statistic": 1.3613839285714286,
-      "ci_low": 1.015919642857143,
-      "ci_high": 1.6908147321428564,
+      "ci_low": 1.0328649553571436,
+      "ci_high": 1.7017008928571424,
       "p_value": 7.186286246084637e-09,
       "effect_label": "large",
       "evidence": "Strong",
       "verdict": "supported",
-      "notes": "0-5 yrs vs 6+ yrs: mean diff = +1.36 rating points (Mann-Whitney U = 839.0, p = 7.1863e-09, r_rb = -0.87). Threshold search indicates candidate inflection at b=8 yrs (delta-R2 = 0.0636, perm p = 0.1279).",
+      "notes": "0-5 yrs (n=28, mean=2.399) vs 6+ yrs (n=32, mean=3.760): mean difference = +1.361 rating points [95% CI: 1.03, 1.70], Mann-Whitney U = 839.0, p = 7.1863e-09. The 0\u20135 vs 6+ group difference is supported, but a specific breakpoint is not supported (best candidate b*=8 yrs, delta-R2 = 0.0636, permutation p = 0.132).",
       "extra": {
         "two_group_contrast": {
+          "n_0_to_5": 28,
+          "mean_0_to_5": 2.398928571428571,
+          "n_6_plus": 32,
+          "mean_6_plus": 3.7603124999999995,
           "mean_diff": 1.3613839285714286,
           "mean_diff_ci": [
-            1.015919642857143,
-            1.6908147321428564
+            1.0328649553571436,
+            1.7017008928571424
           ],
           "mann_whitney": {
             "status": "ok",
@@ -328,12 +333,24 @@
             "p_value": 7.186286246084637e-09,
             "rank_biserial": -0.8727678571428572,
             "effect": "large"
-          }
+          },
+          "verdict": "supported"
         },
         "breakpoint_search": {
           "best_breakpoint": 8,
           "best_delta_r2": 0.06359287271150504,
-          "permutation_p": 0.127936031984008,
+          "permutation_p": 0.13193403298350825,
+          "slope_before": 0.21150423531273924,
+          "slope_before_ci": [
+            0.14525901004682348,
+            0.29303955300915385
+          ],
+          "slope_after": 0.047699543412282774,
+          "slope_after_ci": [
+            -0.06250202484268497,
+            0.09054817394807117
+          ],
+          "verdict": "not supported",
           "grid_results": {
             "3": {
               "r2": 0.35768601006089906,
@@ -624,7 +641,7 @@
     "F5": {
       "id": "F5",
       "question": "Are instructor ratings correlated with the quality ratings of the courses they teach?",
-      "method": "Multi-level correlation (Teacher n=60, Course n=60, Pair n=887 with cluster-robust SE)",
+      "method": "Multi-level correlation (Teacher n=60, Course n=60, Secondary Pair n=887 with cluster-robust SE)",
       "unit_of_analysis": "teacher",
       "n": 60,
       "statistic": 0.00047874336809483305,
@@ -634,7 +651,7 @@
       "effect_label": "negligible",
       "evidence": "None",
       "verdict": "not supported",
-      "notes": "Teacher-level correlation is r = 0.000 (p = 0.9971). Course-level correlation is r = -0.013 (p = 0.9212). Instructor performance and course quality are statistically decoupled (rating_decoupling = True).",
+      "notes": "Teacher-level correlation is r = 0.000 (p = 0.9971). Course-level correlation is r = -0.013 (p = 0.9212). Secondary pair-level cluster-robust OLS gives slope = -0.0391 (p = 0.0929). Instructor performance and course quality are statistically decoupled (rating_decoupling = True).",
       "extra": {
         "rating_decoupling": true,
         "teacher_level": {
@@ -667,7 +684,15 @@
           "ci_high": 0.032231869561301495,
           "effect": "negligible"
         },
-        "pair_level_cluster_p": 0.09290438506089106
+        "secondary_pair_level_cluster_robust": {
+          "slope": -0.03909718393849863,
+          "se": 0.023268364527711256,
+          "p_value": 0.09290438506089106,
+          "ci": [
+            -0.08470234039196203,
+            0.00650797251496478
+          ]
+        }
       }
     },
     "F6": {
@@ -683,7 +708,7 @@
       "effect_label": "negligible",
       "evidence": "None",
       "verdict": "not supported",
-      "notes": "Kruskal-Wallis across course categories: H = 4.388, p = 9.5716e-01, epsilon^2 = 0.000 (negligible effect). 29 cells in Category x Level have n < 3.",
+      "notes": "Kruskal-Wallis across course categories: H = 4.388 (df = 11, p = 0.9572, epsilon^2 = 0.000, negligible effect). Category differences in course rating are not statistically significant. 29 cells in Category x Level have n < 3.",
       "extra": {
         "kruskal_wallis": {
           "status": "ok",
@@ -692,7 +717,8 @@
           "statistic": 4.388028677819179,
           "p_value": 0.957162761385414,
           "epsilon_squared": 0.0,
-          "effect": "negligible"
+          "effect": "negligible",
+          "df": 11
         },
         "pairwise_holm": [],
         "category_level_cell_counts": {
@@ -901,7 +927,7 @@
       "effect_label": "negligible",
       "evidence": "None",
       "verdict": "not supported",
-      "notes": "Kruskal-Wallis across levels: H = 1.913, p = 3.8423e-01, epsilon^2 = 0.000. Advanced vs Intermediate contrast: mean diff = -0.51 (p = 0.1468, r_rb = 0.28).",
+      "notes": "Kruskal-Wallis across levels: H = 1.913 (df = 2, p = 0.3842, epsilon^2 = 0.000, negligible effect). Advanced vs Intermediate contrast: mean diff = -0.509 [95% CI: -1.18, 0.18] (Mann-Whitney U = 137.0, p = 0.1468).",
       "extra": {
         "kruskal_wallis": {
           "status": "ok",
@@ -910,13 +936,14 @@
           "statistic": 1.9130411385732906,
           "p_value": 0.38422745566748034,
           "epsilon_squared": 0.0,
-          "effect": "negligible"
+          "effect": "negligible",
+          "df": 2
         },
         "contrast_adv_vs_inter": {
           "mean_diff": -0.5089682539682543,
           "ci_mean_diff": [
-            -1.196267857142857,
-            0.1581170634920631
+            -1.1814404761904758,
+            0.18144246031746003
           ],
           "mann_whitney": {
             "status": "ok",
@@ -943,9 +970,9 @@
       "effect_label": "small",
       "evidence": "None",
       "verdict": "not supported",
-      "notes": "At teacher level (n=60), TeacherRating does not differ significantly by Gender (Female vs Male Mann-Whitney p = 0.1187, r_rb = -0.24). Weighted course rating by Gender also shows p = 0.0045. Gender x Level differences in transactions are descriptive and reflect assignment distributions.",
+      "notes": "(a) TeacherRating by Gender: Mann-Whitney U = 551.0, p = 0.119 (Females mean=3.23, Males mean=3.04). (b) Course quality by Gender: Mann-Whitney U = 254.0, p = 0.0045 (confounded by assignment distributions). (c) Transaction-level Gender x Level cells are purely descriptive.",
       "extra": {
-        "teacher_rating_by_gender": {
+        "f8a_teacher_rating_by_gender": {
           "status": "ok",
           "n1": 27,
           "n2": 33,
@@ -954,7 +981,7 @@
           "rank_biserial": -0.2368125701459034,
           "effect": "small"
         },
-        "weighted_course_rating_by_gender": {
+        "f8b_weighted_course_rating_by_gender": {
           "status": "ok",
           "n1": 27,
           "n2": 33,
@@ -963,11 +990,11 @@
           "rank_biserial": 0.42985409652076323,
           "effect": "moderate"
         },
-        "cell_level_cluster_bootstraps": {
+        "f8c_cell_level_cluster_bootstraps": {
           "Female_Advanced": {
             "gender": "Female",
             "course_level": "Advanced",
-            "enrollments": 1788,
+            "cell_n_enrollments": 1788,
             "weighted_course_rating": 2.8001174496644294,
             "ci": [
               2.6335294421898623,
@@ -977,7 +1004,7 @@
           "Female_Beginner": {
             "gender": "Female",
             "course_level": "Beginner",
-            "enrollments": 1724,
+            "cell_n_enrollments": 1724,
             "weighted_course_rating": 3.102708816705336,
             "ci": [
               2.945206707181089,
@@ -987,7 +1014,7 @@
           "Female_Intermediate": {
             "gender": "Female",
             "course_level": "Intermediate",
-            "enrollments": 1414,
+            "cell_n_enrollments": 1414,
             "weighted_course_rating": 3.3343352192362095,
             "ci": [
               2.944774592341855,
@@ -997,7 +1024,7 @@
           "Male_Advanced": {
             "gender": "Male",
             "course_level": "Advanced",
-            "enrollments": 1687,
+            "cell_n_enrollments": 1687,
             "weighted_course_rating": 2.8390752815649076,
             "ci": [
               2.7525601039468044,
@@ -1007,7 +1034,7 @@
           "Male_Beginner": {
             "gender": "Male",
             "course_level": "Beginner",
-            "enrollments": 1849,
+            "cell_n_enrollments": 1849,
             "weighted_course_rating": 3.3735911303407247,
             "ci": [
               3.231331853594569,
@@ -1017,7 +1044,78 @@
           "Male_Intermediate": {
             "gender": "Male",
             "course_level": "Intermediate",
-            "enrollments": 1538,
+            "cell_n_enrollments": 1538,
+            "weighted_course_rating": 3.3387841352405725,
+            "ci": [
+              3.247812777195987,
+              3.6634322847788923
+            ]
+          }
+        },
+        "teacher_rating_by_gender": {
+          "status": "ok",
+          "n1": 27,
+          "n2": 33,
+          "statistic": 551.0,
+          "p_value": 0.118695640007186,
+          "rank_biserial": -0.2368125701459034,
+          "effect": "small"
+        },
+        "cell_level_cluster_bootstraps": {
+          "Female_Advanced": {
+            "gender": "Female",
+            "course_level": "Advanced",
+            "cell_n_enrollments": 1788,
+            "weighted_course_rating": 2.8001174496644294,
+            "ci": [
+              2.6335294421898623,
+              2.883612627856004
+            ]
+          },
+          "Female_Beginner": {
+            "gender": "Female",
+            "course_level": "Beginner",
+            "cell_n_enrollments": 1724,
+            "weighted_course_rating": 3.102708816705336,
+            "ci": [
+              2.945206707181089,
+              3.4137973363452065
+            ]
+          },
+          "Female_Intermediate": {
+            "gender": "Female",
+            "course_level": "Intermediate",
+            "cell_n_enrollments": 1414,
+            "weighted_course_rating": 3.3343352192362095,
+            "ci": [
+              2.944774592341855,
+              3.4600431765332504
+            ]
+          },
+          "Male_Advanced": {
+            "gender": "Male",
+            "course_level": "Advanced",
+            "cell_n_enrollments": 1687,
+            "weighted_course_rating": 2.8390752815649076,
+            "ci": [
+              2.7525601039468044,
+              3.012049143643647
+            ]
+          },
+          "Male_Beginner": {
+            "gender": "Male",
+            "course_level": "Beginner",
+            "cell_n_enrollments": 1849,
+            "weighted_course_rating": 3.3735911303407247,
+            "ci": [
+              3.231331853594569,
+              3.4429722239414278
+            ]
+          },
+          "Male_Intermediate": {
+            "gender": "Male",
+            "course_level": "Intermediate",
+            "cell_n_enrollments": 1538,
             "weighted_course_rating": 3.3387841352405725,
             "ci": [
               3.247812777195987,
@@ -1040,7 +1138,7 @@
       "effect_label": "negligible",
       "evidence": "None",
       "verdict": "not supported",
-      "notes": "Kruskal-Wallis across instructor tiers: H = 0.068, p = 0.9668, epsilon^2 = 0.000. Tier means on weighted course rating: High=3.17, Mid=3.14, Low=3.17.",
+      "notes": "Kruskal-Wallis across instructor tiers: H = 0.068, p = 0.9668, epsilon^2 = 0.000. Tier means on weighted course rating: High=3.17, Mid=3.14, Low=3.17. Differences are not significant.",
       "extra": {
         "kruskal_wallis": {
           "status": "ok",
@@ -1072,7 +1170,7 @@
       "effect_label": "negligible",
       "evidence": "None",
       "verdict": "not supported",
-      "notes": "Spearman correlation between TeacherRating and total enrollments is rho = -0.012 (p = 0.9274). High-tier instructors average 620.0 enrollments vs 64.9 for rest (Mann-Whitney p = 0.0301).",
+      "notes": "Spearman correlation between TeacherRating and total enrollments is rho = -0.012 (p = 0.9274). High-tier instructors vs rest Mann-Whitney: U = 383.5, p = 0.030 (High tier mean=620.0, Mid tier mean=56.3, Low tier mean=76.4).",
       "extra": {
         "spearman": {
           "status": "ok",
@@ -1095,8 +1193,8 @@
         },
         "tier_enrollment_means": {
           "High (\u22654.0)": 620.0,
-          "Mid (3.0\u20133.9)": 56.285714285714285,
-          "Low (<3.0)": 76.38095238095238
+          "Mid (3.0\u20133.9)": 56.29,
+          "Low (<3.0)": 76.38
         }
       }
     },
@@ -1111,9 +1209,9 @@
       "ci_high": NaN,
       "p_value": 0.3823164882455874,
       "effect_label": "moderate",
-      "evidence": "None",
-      "verdict": "not supported",
-      "notes": "Teacher enrollment Gini = 0.681, Top-5 share = 65.5%, HHI = 1885.7. Controlling for domain in OLS (HC3), TeacherRating slope on log(enr) is beta = 0.164 (p = 0.3823, partial R2 = 0.027).",
+      "evidence": "Moderate",
+      "verdict": "descriptive",
+      "notes": "Teacher enrollment Gini = 0.681, Top-5 share = 65.5%, Top-11 share = 73.1%, HHI = 1885.7. Within top 2 domains (n=14): rho = 0.319 (p = 0.266); excluding top 2 (n=46): rho = 0.031 (p = 0.837). Controlling for domain in OLS (HC3), TeacherRating slope on log(enr) is beta = 0.164 (SE = 0.187, p = 0.3823, partial R2 = 0.027). Singletons: ['Marketing', 'Programming']. Course concentration: Gini = 0.042, Top-5 course share = 9.5%.",
       "extra": {
         "teacher_gini": 0.6809800000000001,
         "teacher_top5_share": 0.6549,
@@ -1123,34 +1221,29 @@
         "course_top5_share": 0.0953,
         "leave_k_out": {
           "0": {
-            "n": 60,
-            "spearman_rho": -0.012022071087860724,
-            "p_value": 0.9273599836170756,
-            "high_tier_share": 0.682
+            "ratio": 3.7200000000000006,
+            "high_share": 0.682,
+            "n": 60
           },
           "1": {
-            "n": 59,
-            "spearman_rho": -0.0643902326751605,
-            "p_value": 0.6280227211200727,
-            "high_tier_share": 0.5417207090358841
+            "ratio": 3.196152183311716,
+            "high_share": 0.5417207090358841,
+            "n": 59
           },
           "2": {
-            "n": 58,
-            "spearman_rho": -0.12043577234030926,
-            "p_value": 0.36783888811095533,
-            "high_tier_share": 0.18753193663771078
+            "ratio": 1.2085391472208027,
+            "high_share": 0.18753193663771078,
+            "n": 58
           },
           "3": {
-            "n": 57,
-            "spearman_rho": -0.08373458326165133,
-            "p_value": 0.5357414416659836,
-            "high_tier_share": 0.19573333333333334
+            "ratio": 1.2396444444444445,
+            "high_share": 0.19573333333333334,
+            "n": 57
           },
           "4": {
-            "n": 56,
-            "spearman_rho": -0.034928452782029044,
-            "p_value": 0.798288075150831,
-            "high_tier_share": 0.20451379214265814
+            "ratio": 1.2725302622209838,
+            "high_share": 0.20451379214265814,
+            "n": 56
           }
         },
         "top2_domains": [
@@ -1163,8 +1256,8 @@
           "n": 14,
           "statistic": 0.31938403468052473,
           "p_value": 0.2656727624861704,
-          "ci_low": -0.41053555608525394,
-          "ci_high": 0.805962036700881,
+          "ci_low": -0.4415770928246014,
+          "ci_high": 0.8012250468687533,
           "effect": "moderate"
         },
         "corr_outside_top2": {
@@ -1173,12 +1266,31 @@
           "n": 46,
           "statistic": 0.0312798852169958,
           "p_value": 0.8365078288946743,
-          "ci_low": -0.30306593642051793,
-          "ci_high": 0.33903746183380573,
+          "ci_low": -0.3016452894919609,
+          "ci_high": 0.36350037970540733,
           "effect": "negligible"
         },
+        "domain_counts": {
+          "Digital Marketing": 11,
+          "Cybersecurity": 9,
+          "Finance": 6,
+          "Artificial Intelligence": 6,
+          "Machine Learning": 5,
+          "Data Science": 5,
+          "Project Management": 5,
+          "Web Development": 5,
+          "Design": 4,
+          "Business": 2,
+          "Marketing": 1,
+          "Programming": 1
+        },
+        "singleton_domains": [
+          "Marketing",
+          "Programming"
+        ],
         "domain_controlled_ols": {
           "teacher_rating_coef": 0.16351694947962092,
+          "teacher_rating_se": 0.1871682719504232,
           "teacher_rating_p": 0.3823164882455874,
           "teacher_rating_ci": [
             -0.203326122591807,
@@ -1192,28 +1304,51 @@
     "F12": {
       "id": "F12",
       "question": "Do instructor ratings vary systematically across expertise domains?",
-      "method": "Kruskal-Wallis H test across domains meeting sample size threshold",
+      "method": "Kruskal-Wallis H test across domains (reporting both min_group_size 2 and 3)",
       "unit_of_analysis": "teacher",
       "n": 60,
-      "statistic": 15.19585061373924,
+      "statistic": 15.670403947178306,
       "ci_low": NaN,
       "ci_high": NaN,
-      "p_value": 0.05544729240931272,
+      "p_value": 0.0740916747320005,
       "effect_label": "moderate",
       "evidence": "Weak",
-      "verdict": "inconclusive",
-      "notes": "Kruskal-Wallis across 9 expertise areas with n >= 3: H = 15.196, p = 0.0554, epsilon^2 = 0.153. Excluded due to small sample size: ['Business', 'Marketing', 'Programming'].",
+      "verdict": "not supported",
+      "notes": "Kruskal-Wallis across expertise domains: [min_group_size=2, 10 groups, n=58]: H = 15.670 (df = 9, p = 0.0741, epsilon^2 = 0.139); [min_group_size=3, 9 groups, n=56]: H = 15.196 (df = 8, p = 0.0554, epsilon^2 = 0.153). Expertise area differences in TeacherRating are not statistically significant.",
       "extra": {
-        "kruskal_wallis": {
+        "kruskal_min_group_size_2": {
+          "status": "ok",
+          "k": 10,
+          "n": 58,
+          "statistic": 15.670403947178306,
+          "p_value": 0.0740916747320005,
+          "epsilon_squared": 0.13896674889954805,
+          "effect": "moderate",
+          "df": 9
+        },
+        "kruskal_min_group_size_3": {
           "status": "ok",
           "k": 9,
           "n": 56,
           "statistic": 15.19585061373924,
           "p_value": 0.05544729240931272,
           "epsilon_squared": 0.15310320454764342,
-          "effect": "moderate"
+          "effect": "moderate",
+          "df": 8
         },
-        "valid_domains": [
+        "valid_domains_size_2": [
+          "Digital Marketing",
+          "Cybersecurity",
+          "Finance",
+          "Artificial Intelligence",
+          "Machine Learning",
+          "Data Science",
+          "Project Management",
+          "Web Development",
+          "Design",
+          "Business"
+        ],
+        "valid_domains_size_3": [
           "Digital Marketing",
           "Cybersecurity",
           "Finance",
@@ -1223,11 +1358,6 @@
           "Project Management",
           "Web Development",
           "Design"
-        ],
-        "insufficient_domains": [
-          "Business",
-          "Marketing",
-          "Programming"
         ],
         "domain_counts": {
           "Digital Marketing": 11,
@@ -1242,249 +1372,47 @@
           "Business": 2,
           "Marketing": 1,
           "Programming": 1
-        }
+        },
+        "insufficient_domains": [
+          "Business",
+          "Marketing",
+          "Programming"
+        ]
       }
     },
     "F13": {
       "id": "F13",
-      "question": "How does course quality vary by expertise domain, and is there an ML curriculum gap?",
-      "method": "Domain-specific aggregation, cluster CIs, and ML curriculum gap contrast",
+      "question": "How does course quality vary by expertise domain, and is there an ML quality gap?",
+      "method": "Domain-specific aggregation, cluster CIs, and ML quality contrast",
       "unit_of_analysis": "teacher",
       "n": 60,
-      "statistic": 1.5759999999999996,
-      "ci_low": NaN,
-      "ci_high": NaN,
+      "statistic": 0.3965110505600964,
+      "ci_low": -0.06635390946502095,
+      "ci_high": 0.4178401792382376,
       "p_value": 0.001,
-      "effect_label": "large",
-      "evidence": "Strong",
-      "verdict": "supported",
-      "notes": "Machine Learning Curriculum Gap: ML instructor ratings are high (mean = 4.23), whereas ML course catalog quality is low (mean = 2.66), creating an evidence gap of +1.58 rating points. Mean own-domain teaching share across platform is 74.0%.",
+      "effect_label": "moderate",
+      "evidence": "Weak",
+      "verdict": "inconclusive",
+      "notes": "Machine Learning Quality Contrast: ML category catalog average CourseRating (A) is 2.658 vs enrollment-weighted CourseRating of courses taught by ML instructors (B) of 3.055 (unweighted 2.946). The difference B - A is +0.397 [95% cluster CI: -0.066, 0.418]. The data cannot separate instructor competence from curriculum design. ML instructors' TeacherRating averages 4.234 (reported separately). Mean own-domain teaching share across platform is 74.0%.",
       "extra": {
-        "domain_summary": {
-          "Artificial Intelligence": {
-            "n_teachers": 6,
-            "mean_weighted_course_rating": 3.1552891639323755,
-            "ci": [
-              3.0672745168073163,
-              3.2253300105523834
-            ],
-            "correlation": {
-              "status": "ok",
-              "method": "pearson",
-              "n": 6,
-              "statistic": -0.1777397150573874,
-              "p_value": 0.7361979511917027,
-              "ci_low": -0.864587172647072,
-              "ci_high": 0.7406591847484462,
-              "effect": "small"
-            }
-          },
-          "Business": {
-            "n_teachers": 2,
-            "mean_weighted_course_rating": 2.804278670679388,
-            "ci": [
-              2.765155279503106,
-              2.84340206185567
-            ],
-            "correlation": {
-              "status": "insufficient data",
-              "method": "pearson",
-              "n": 2,
-              "statistic": NaN,
-              "p_value": NaN,
-              "ci_low": NaN,
-              "ci_high": NaN,
-              "effect": "undefined"
-            }
-          },
-          "Cybersecurity": {
-            "n_teachers": 9,
-            "mean_weighted_course_rating": 3.0383178176500767,
-            "ci": [
-              2.8839024149314887,
-              3.1854917191335805
-            ],
-            "correlation": {
-              "status": "ok",
-              "method": "pearson",
-              "n": 9,
-              "statistic": 0.05694397931359763,
-              "p_value": 0.8843076880340929,
-              "ci_low": -0.6310423183944034,
-              "ci_high": 0.6947902935676817,
-              "effect": "negligible"
-            }
-          },
-          "Data Science": {
-            "n_teachers": 5,
-            "mean_weighted_course_rating": 3.282659125587409,
-            "ci": [
-              3.2613336316982933,
-              3.3104796599878568
-            ],
-            "correlation": {
-              "status": "ok",
-              "method": "pearson",
-              "n": 5,
-              "statistic": -0.9597384973748586,
-              "p_value": 0.009638923014638858,
-              "ci_low": -0.997433251221891,
-              "ci_high": -0.5055110685122511,
-              "effect": "large"
-            }
-          },
-          "Design": {
-            "n_teachers": 4,
-            "mean_weighted_course_rating": 3.1600215938816705,
-            "ci": [
-              3.111988162496637,
-              3.2150544548719733
-            ],
-            "correlation": {
-              "status": "ok",
-              "method": "pearson",
-              "n": 4,
-              "statistic": 0.9310918934915307,
-              "p_value": 0.06890810650846935,
-              "ci_low": -0.28528914555027834,
-              "ci_high": 0.9985849007813572,
-              "effect": "large"
-            }
-          },
-          "Digital Marketing": {
-            "n_teachers": 11,
-            "mean_weighted_course_rating": 3.546758634262942,
-            "ci": [
-              3.4461452877645753,
-              3.6547216621389564
-            ],
-            "correlation": {
-              "status": "ok",
-              "method": "pearson",
-              "n": 11,
-              "statistic": 0.24292402848978722,
-              "p_value": 0.471673300637461,
-              "ci_low": -0.4178403795001906,
-              "ci_high": 0.7356038641964201,
-              "effect": "small"
-            }
-          },
-          "Finance": {
-            "n_teachers": 6,
-            "mean_weighted_course_rating": 3.1659168156089197,
-            "ci": [
-              2.9974291477673334,
-              3.301637161393259
-            ],
-            "correlation": {
-              "status": "ok",
-              "method": "pearson",
-              "n": 6,
-              "statistic": -0.1748211687062578,
-              "p_value": 0.7404397277701132,
-              "ci_low": -0.8638246541636023,
-              "ci_high": 0.7420159108661216,
-              "effect": "small"
-            }
-          },
-          "Machine Learning": {
-            "n_teachers": 5,
-            "mean_weighted_course_rating": 2.7750558472669455,
-            "ci": [
-              2.589051603620171,
-              2.977511911396378
-            ],
-            "correlation": {
-              "status": "ok",
-              "method": "pearson",
-              "n": 5,
-              "statistic": 0.0705731969410292,
-              "p_value": 0.9102180602743304,
-              "ci_low": -0.8655885476363828,
-              "ci_high": 0.8969891644200964,
-              "effect": "negligible"
-            }
-          },
-          "Marketing": {
-            "n_teachers": 1,
-            "mean_weighted_course_rating": 3.646666666666667,
-            "ci": [
-              NaN,
-              NaN
-            ],
-            "correlation": {
-              "status": "insufficient data",
-              "method": "pearson",
-              "n": 1,
-              "statistic": NaN,
-              "p_value": NaN,
-              "ci_low": NaN,
-              "ci_high": NaN,
-              "effect": "undefined"
-            }
-          },
-          "Programming": {
-            "n_teachers": 1,
-            "mean_weighted_course_rating": 2.9804878048780488,
-            "ci": [
-              NaN,
-              NaN
-            ],
-            "correlation": {
-              "status": "insufficient data",
-              "method": "pearson",
-              "n": 1,
-              "statistic": NaN,
-              "p_value": NaN,
-              "ci_low": NaN,
-              "ci_high": NaN,
-              "effect": "undefined"
-            }
-          },
-          "Project Management": {
-            "n_teachers": 5,
-            "mean_weighted_course_rating": 3.0827800856887047,
-            "ci": [
-              2.977622111544847,
-              3.187938059832562
-            ],
-            "correlation": {
-              "status": "ok",
-              "method": "pearson",
-              "n": 5,
-              "statistic": 0.4894029982478802,
-              "p_value": 0.4027279735939166,
-              "ci_low": -0.6913978358519268,
-              "ci_high": 0.958014325481928,
-              "effect": "moderate"
-            }
-          },
-          "Web Development": {
-            "n_teachers": 5,
-            "mean_weighted_course_rating": 2.944793523931312,
-            "ci": [
-              2.8128247929606625,
-              3.1056078431372547
-            ],
-            "correlation": {
-              "status": "ok",
-              "method": "pearson",
-              "n": 5,
-              "statistic": 0.21975533438454053,
-              "p_value": 0.7224674651820673,
-              "ci_low": -0.8218545058133285,
-              "ci_high": 0.9230569391871359,
-              "effect": "small"
-            }
-          }
+        "ml_quality_gap": {
+          "A_ml_category_catalog_cr": 2.6580000000000004,
+          "B_ml_teachers_weighted_cr": 3.0545110505600968,
+          "B_ml_teachers_unweighted_cr": 2.945670103092784,
+          "B_minus_A": 0.3965110505600964,
+          "ci_B_minus_A": [
+            -0.06635390946502095,
+            0.4178401792382376
+          ]
         },
+        "ml_instructors_teacher_rating_mean": 4.234,
         "own_domain_share_mean": 0.7395751256534215,
         "own_domain_share_median": 0.7721897335932424,
         "ml_curriculum_gap": {
           "ml_teacher_rating_mean": 4.234,
           "ml_course_rating_catalog_mean": 2.6580000000000004,
-          "ml_teacher_weighted_course_rating_mean": 2.7750558472669455,
-          "gap_points": 1.5759999999999996
+          "ml_teacher_weighted_course_rating_mean": 3.0545110505600968,
+          "gap_points": 0.3965110505600964
         }
       }
     }
