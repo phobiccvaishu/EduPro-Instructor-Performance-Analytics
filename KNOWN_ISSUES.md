@@ -38,12 +38,13 @@ The following legacy keys and methods are marked deprecated in Step 2 and schedu
 
 ---
 
-## Step 4 — Code Quality, UI Modernization & Deprecations
+## Step 4 — Code Quality, UI Modernization & Deprecations (Resolved in Step 4)
 
-- **[STEP-4-001] Hard-Coded Insight Text & Dynamic Data Mismatches**: Several textual insights and callout narratives in `app.py` are hard-coded strings rather than dynamically derived from the underlying data.
-- **[STEP-4-002] Static Header Counts**: Header metrics and title captions contain hard-coded counts rather than reading from active dataset dimensions.
-- **[STEP-4-003] Excessive Heading & Callout Emojis**: Informal emojis in section titles and alert banners should be replaced with professional UI iconography.
-- **[STEP-4-004] Streamlit `use_container_width` Deprecation**: Streamlit 1.66+ emits deprecation notices for `use_container_width=True` in `st.plotly_chart` (to be replaced with `width='stretch'`).
+- **[STEP-4-001] [RESOLVED] Hard-Coded Insight Text & Dynamic Data Mismatches**: Resolved via `edupro.insights`. All callout narratives and analytical conclusions are dynamically synthesized from `Finding` and `KPIResult` objects under strict language governance (zero causal verbs, zero superlatives).
+- **[STEP-4-002] [RESOLVED] Static Header Counts**: Resolved in `app.py`. Dynamic scope caption reads directly from active filter dimensions: instructor count, course count, transaction pair count, enrollment count, active filter tags, and fast estimation mode indicator.
+- **[STEP-4-003] [RESOLVED] Excessive Heading & Callout Emojis**: Resolved. All emojis purged from app.py, tabs, filters, components, and documentation. Modern executive BI typography and styling implemented.
+- **[STEP-4-004] [RESOLVED] Streamlit `use_container_width` Deprecation**: Resolved across all tabs, components, and filter widgets by replacing `use_container_width=True` with `width="stretch"` (Streamlit 1.66+ standard).
+- **[STEP-4-005] [RESOLVED] Legacy Key Decommissioning**: Deprecated legacy dictionary keys (`"kpis"`, `"experience_vs_performance"`, `"course_quality"`, `"instructor_impact"`, `"expertise_performance"`, `"teacher_course_corr"`) removed from `run_full_analysis()`. Baseline verified via `test_golden_v2.py`.
 
 ---
 

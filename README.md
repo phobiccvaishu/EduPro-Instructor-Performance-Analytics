@@ -36,12 +36,23 @@ $env:EDUPRO_DATA_PATH = "data/raw/EduPro_Online_Platform.xlsx"
 streamlit run app.py
 ```
 
+## Documentation & Architecture
+
+- Architecture Guide: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- UI & Design System Guide: [docs/UI_GUIDE.md](docs/UI_GUIDE.md)
+- Known Issues & Roadmap: [KNOWN_ISSUES.md](KNOWN_ISSUES.md)
+- Visual Artifacts & Screenshots: [docs/screenshots/](docs/screenshots/)
+
 ## Running Tests & Linting
 
 ```bash
-# Run complete test suite (20 tests)
+# Run complete test suite
 pytest
 
 # Run linting check
-ruff check
+ruff check .
+
+# Check code formatting
+ruff format --check .
+```
 ```
