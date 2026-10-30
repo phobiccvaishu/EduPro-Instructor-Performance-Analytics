@@ -23,11 +23,13 @@ class AnalysisConfig:
     n_boot: int = 2000
     n_perm: int = 2000
     fast_mode: bool = False
-    fast_n_boot: int = 200
+    fast_n_boot: int = 300
     fast_n_perm: int = 0
     min_group_size: int = 3
     attribution: str = "enrollment_weighted"  # "enrollment_weighted" or "unweighted"
     min_pair_enrollment: int | None = None  # None for default; e.g. 3 for sensitivity runs
+    robustness_retention_threshold: float = 0.75
+    robustness_k: int = 3
 
     @property
     def effective_n_boot(self) -> int:
@@ -53,10 +55,19 @@ class Settings:
     default_seed: int = 20260601
     default_n_boot: int = 2000
     default_n_perm: int = 2000
-    fast_n_boot: int = 200
+    fast_n_boot: int = 300
     fast_n_perm: int = 0
     attribution_default: str = "enrollment_weighted"
     min_pair_enrollment_sensitivity: int = 3
+    robustness_retention_threshold: float = 0.75
+    robustness_k: int = 3
+    allowed_verdicts: tuple[str, ...] = (
+        "supported",
+        "not supported",
+        "inconclusive",
+        "descriptive",
+        "insufficient data",
+    )
 
     # Rating scale
     min_rating: float = 1.0
@@ -142,11 +153,12 @@ def get_epsilon_squared_effect(eps: float | None) -> str:
     """Classify Kruskal-Wallis epsilon-squared effect size."""
     if eps is None or eps != eps:
         return "undefined"
-    if eps < 0.01:
+    eps_val = max(0.0, float(eps))
+    if eps_val < 0.01:
         return "negligible"
-    elif eps < 0.08:
+    elif eps_val < 0.08:
         return "small"
-    elif eps < 0.26:
+    elif eps_val < 0.26:
         return "moderate"
     else:
         return "large"
