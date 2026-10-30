@@ -62,20 +62,14 @@ class TestKPIsV2:
         t_fast = time.perf_counter() - t0
         assert t_fast < 2.5
 
-        # Check presence of all legacy and new keys
+        # Check presence of all v2 keys
         expected_keys = {
-            "kpis",
-            "per_instructor_consistency",
-            "integration_summary",
-            "instructor_profiles",
-            "experience_vs_performance",
-            "course_quality",
-            "instructor_impact",
-            "expertise_performance",
-            "teacher_course_corr",
             "entity_tables",
             "findings",
             "kpis_v2",
+            "per_instructor_consistency",
+            "integration_summary",
+            "instructor_profiles",
             "meta",
         }
         assert expected_keys.issubset(set(fast_res.keys()))

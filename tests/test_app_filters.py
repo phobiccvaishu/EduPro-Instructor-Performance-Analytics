@@ -205,13 +205,10 @@ def test_50_combination_randomized_stress_test(dataset):
             )
             res = engine.run_full_analysis(cfg=cfg)
 
-            assert "kpis" in res
             assert "findings" in res
-            assert "expertise_performance" in res
-            assert "instructor_impact" in res
-            assert "course_quality" in res
-            assert "experience_vs_performance" in res
-            assert "teacher_course_corr" in res
+            assert "kpis_v2" in res
+            assert "entity_tables" in res
+            assert "meta" in res
 
 
 def test_default_kpi_tiles_equal_step2_and_react_to_filters():
@@ -275,3 +272,33 @@ def test_default_kpi_tiles_equal_step2_and_react_to_filters():
     # Machine Learning teachers have higher ratings (~4.234)
     assert tr_filtered_val != tr_val
     assert tr_filtered_val == pytest.approx(4.234, abs=1e-2)
+
+
+def test_20_combinations_no_nan_or_none_rendered(dataset):
+    """Verify that under 20 seeded random filter combinations, no rendered UI text contains 'nan', 'none', or 'inf'."""
+    rng = random.Random(42)
+    b = FilterBounds.from_dataset(dataset)
+
+    at = AppTest.from_file(APP_PATH, default_timeout=30)
+    at.run()
+    assert not at.exception
+
+    for _ in range(20):
+        k_exp = rng.randint(0, min(3, len(b.all_expertises)))
+        sample_exp = rng.sample(list(b.all_expertises), k_exp) if k_exp > 0 else []
+
+        t_lo = round(rng.uniform(b.teacher_rating_min, 3.0), 2)
+        t_hi = round(rng.uniform(3.5, b.teacher_rating_max), 2)
+
+        at.sidebar.multiselect(key="ui_sel_expertise").set_value(sample_exp)
+        at.sidebar.slider(key="ui_sel_tr").set_value((t_lo, t_hi))
+        at.run()
+
+        assert not at.exception
+
+        # Check metric values
+        for m in at.metric:
+            m_val = str(m.value).lower()
+            assert "nan" not in m_val
+            assert "none" not in m_val
+            assert "inf" not in m_val

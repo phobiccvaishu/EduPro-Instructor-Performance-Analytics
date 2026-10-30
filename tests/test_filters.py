@@ -198,23 +198,21 @@ def test_filter_scope_matrix_coverage(dataset, filter_name, filter_state):
     tab1_changed = not view.teacher_table.equals(base_view.teacher_table)
     assert tab1_changed, f"Tab 1 (teacher_table) did not change for {filter_name}"
 
-    # 3. Tab 2: Experience & Ratings (evp group_avg, pearson_r_course, or teacher_table)
+    # 3. Tab 2: Experience & Ratings (res['findings']['F2'] or teacher_table)
     tab2_changed = (
         not view.teacher_table.equals(base_view.teacher_table)
-        or res["experience_vs_performance"]["pearson_r_course"]
-        != base_res["experience_vs_performance"]["pearson_r_course"]
+        or res["findings"]["F2"].statistic != base_res["findings"]["F2"].statistic
     )
     assert tab2_changed, f"Tab 2 (experience vs performance) did not change for {filter_name}"
 
-    # 4. Tab 3: Course Quality Maps (view.course_table or cq by_category)
+    # 4. Tab 3: Course Quality Maps (view.course_table)
     tab3_changed = not view.course_table.equals(base_view.course_table)
     assert tab3_changed, f"Tab 3 (course_table) did not change for {filter_name}"
 
-    # 5. Tab 4: Domain Analysis (ep exp_teacher or exp_course)
-    tab4_changed = not res["expertise_performance"]["exp_teacher"].equals(
-        base_res["expertise_performance"]["exp_teacher"]
-    ) or not res["expertise_performance"]["exp_course"].equals(
-        base_res["expertise_performance"]["exp_course"]
+    # 5. Tab 4: Domain Analysis (res['findings']['F8a'] or master)
+    tab4_changed = (
+        not view.master.equals(base_view.master)
+        or res["findings"]["F8a"].statistic != base_res["findings"]["F8a"].statistic
     )
     assert tab4_changed, f"Tab 4 (domain analysis) did not change for {filter_name}"
 
