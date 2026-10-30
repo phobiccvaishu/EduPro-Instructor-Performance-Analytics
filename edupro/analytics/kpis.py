@@ -367,8 +367,16 @@ class KPIEngine:
             if len(perm_vals) > 0
             else np.nan
         )
+        if n_perm > 0 and np.isfinite(perm_p):
+            ev = evidence_label(perm_p, n_inst, ci, "moderate", alpha=cfg.alpha)
+        else:
+            ev = "None"
 
-        ev = evidence_label(perm_p, n_inst, ci, "moderate", alpha=cfg.alpha)
+        p_str = f"{perm_p:.3f}" if np.isfinite(perm_p) else "unbenchmarked"
+        caveat = (
+            f"Instructor-to-instructor differences do not exceed chance (permutation p = {p_str}), "
+            "so the index describes portfolio mix rather than instructor reliability."
+        )
 
         return KPIResult(
             name="rating_consistency_index",
@@ -379,10 +387,11 @@ class KPIEngine:
             unit="index (0–1)",
             evidence=ev,
             definition="Enrollment-weighted mean of per-instructor course quality consistency (1 - CV_weighted).",
-            caveat="Instructors teaching a wider diversity of subjects naturally display wider variation.",
+            caveat=caveat,
             extra={
                 "permutation_benchmark_mean": perm_benchmark_mean,
                 "permutation_p_value": perm_p,
+                "permutation_p": perm_p,
                 "n_instructors_evaluated": n_inst,
             },
         )
@@ -516,9 +525,13 @@ class KPIEngine:
 
         leave_k_res = leave_k_out(calc_ratio, tt, sort_col="total_enrollments", k_values=(0, 1, 2, 3, 4))
 
-        # Robustness classification: Robust if ratio > 1.0 after dropping top 3 instructors
-        k3_ratio = leave_k_res.get(3, {}).get("ratio", 0.0)
-        robustness = "Robust" if k3_ratio > 1.0 else "Fragile"
+        # Robustness classification per Settings thresholds:
+        # Robust only if ratio after removing top k (default 3) stays above 75% of base ratio AND CI excludes 1.0
+        k_target = cfg.robustness_k
+        k_ratio = leave_k_res.get(k_target, {}).get("ratio", 0.0)
+        retention_ok = k_ratio >= (cfg.robustness_retention_threshold * ratio)
+        ci_excludes_one = np.isfinite(ci[0]) and (ci[0] > 1.0)
+        robustness = "Robust" if (retention_ok and ci_excludes_one) else "Fragile"
 
         # Per-tier mean enrollments
         tier_means = {}
