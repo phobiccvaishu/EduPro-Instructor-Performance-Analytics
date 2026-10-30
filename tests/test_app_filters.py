@@ -7,9 +7,11 @@ reset workflows, privacy rule enforcement, and randomized stress testing.
 
 from __future__ import annotations
 
+import json
 import random
 from pathlib import Path
 
+import pytest
 from streamlit.testing.v1 import AppTest
 
 from edupro.analytics.engine import AnalyticsEngine
@@ -210,3 +212,66 @@ def test_50_combination_randomized_stress_test(dataset):
             assert "course_quality" in res
             assert "experience_vs_performance" in res
             assert "teacher_course_corr" in res
+
+
+def test_default_kpi_tiles_equal_step2_and_react_to_filters():
+    """Assert that default KPI banner tiles exactly equal Step 2 v2 KPIs from analysis_summary.json
+    within 1e-4 tolerance, and dynamically update when filters are applied.
+    """
+    summary_path = Path(__file__).resolve().parent.parent / "results" / "analysis_summary.json"
+    with open(summary_path) as f:
+        summary = json.load(f)
+    expected_kpis = summary["kpis_v2"]
+
+    at = AppTest.from_file(APP_PATH, default_timeout=30)
+    at.run()
+    assert not at.exception
+
+    metrics = at.metric[:5]
+    metric_dict = {m.label: m for m in metrics}
+
+    # Tile 1: Avg Teacher Rating (expected 3.125)
+    tr_m = metric_dict["Avg Teacher Rating"]
+    tr_val = float(tr_m.value.split("/")[0].strip())
+    assert tr_val == pytest.approx(expected_kpis["avg_teacher_rating"]["value"], abs=1e-4)
+    assert tr_val == pytest.approx(3.125, abs=1e-4)
+
+    # Tile 2: Avg Course Rating (expected 3.0978)
+    cr_m = metric_dict["Avg Course Rating"]
+    cr_val = float(cr_m.value.split("/")[0].strip())
+    assert cr_val == pytest.approx(expected_kpis["avg_course_rating"]["value"], abs=1e-4)
+    assert cr_val == pytest.approx(3.0978, abs=1e-4)
+
+    # Tile 3: Quality Consistency (expected 0.635)
+    rci_m = metric_dict["Quality Consistency"]
+    rci_val = float(rci_m.value.strip())
+    assert rci_val == pytest.approx(
+        round(expected_kpis["rating_consistency_index"]["value"], 3), abs=1e-4
+    )
+    assert rci_val == pytest.approx(0.635, abs=1e-4)
+
+    # Tile 4: Experience Impact (slope on teacher rating +0.120/yr, slope on course rating -0.0035/yr)
+    exp_m = metric_dict["Experience Impact"]
+    exp_val_str = exp_m.value
+    assert "+0.120" in exp_val_str
+    assert exp_m.delta is not None
+    assert "-0.00" in exp_m.delta
+
+    # Tile 5: Enrollment Lift (expected 3.72x)
+    lift_m = metric_dict["Enrollment Lift (Top Instructors)"]
+    lift_val = float(lift_m.value.replace("×", "").strip())
+    assert lift_val == pytest.approx(expected_kpis["enrollment_influence"]["value"], abs=1e-4)
+    assert lift_val == pytest.approx(3.72, abs=1e-4)
+
+    # Filter test: Apply filter and verify KPI tiles change
+    exp_ms = at.sidebar.multiselect(key="ui_sel_expertise")
+    exp_ms.set_value(["Machine Learning"])
+    at.run()
+    assert not at.exception
+
+    metrics_filtered = at.metric[:5]
+    m_filtered_dict = {m.label: m for m in metrics_filtered}
+    tr_filtered_val = float(m_filtered_dict["Avg Teacher Rating"].value.split("/")[0].strip())
+    # Machine Learning teachers have higher ratings (~4.234)
+    assert tr_filtered_val != tr_val
+    assert tr_filtered_val == pytest.approx(4.234, abs=1e-2)

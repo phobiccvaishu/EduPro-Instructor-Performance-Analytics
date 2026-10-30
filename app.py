@@ -3,6 +3,7 @@ app.py  —  EduPro Instructor & Course Quality Dashboard
 Run:  python -m streamlit run app.py
 """
 
+import math
 from typing import Any
 
 import pandas as pd
@@ -218,6 +219,7 @@ data_hash = dataset.sha256 if hasattr(dataset, "sha256") else "default"
 results = run_analytics_cached(data_hash, filter_state.to_dict())
 
 kpis = results["kpis"]
+kpis_v2 = results["kpis_v2"]
 ep = results["expertise_performance"]
 impact = results["instructor_impact"]
 cq = results["course_quality"]
@@ -262,45 +264,55 @@ st.markdown(
 
 k1, k2, k3, k4, k5 = st.columns(5)
 
-avg_tr = float(kpis["avg_teacher_rating"])
-avg_cr = float(kpis["avg_course_rating"])
-rci = float(kpis["rating_consistency_index"])
-eis = float(kpis["experience_impact"]["impact_score"])
-eir = float(kpis["enrollment_influence"]["enrollment_influence_ratio"])
+kpi_tr = kpis_v2["avg_teacher_rating"]
+kpi_cr = kpis_v2["avg_course_rating"]
+kpi_rci = kpis_v2["rating_consistency_index"]
+kpi_exp = kpis_v2["experience_impact"]
+kpi_eir = kpis_v2["enrollment_influence"]
 
-platform_avg_tr = 3.16
-platform_avg_cr = 3.25
+avg_tr = float(kpi_tr.value)
+avg_cr = float(kpi_cr.value)
+rci = float(kpi_rci.value)
+eir = float(kpi_eir.value)
+
+slope_tr = kpi_exp.extra.get("slope_on_teacher_rating", float("nan"))
+slope_cr = kpi_exp.extra.get("slope_on_course_rating", float("nan"))
+
+platform_avg_tr = 3.125
+platform_avg_cr = 3.097833333333333
 tr_d = avg_tr - platform_avg_tr
 cr_d = avg_cr - platform_avg_cr
 
 k1.metric(
     "Avg Teacher Rating",
-    f"{avg_tr:.2f} / 5.0",
-    delta=f"{tr_d:+.2f} vs all" if abs(tr_d) > 0.001 else None,
-    help="Mean rating given to instructors by learners (1–5 scale).",
+    f"{avg_tr:.3f} / 5.0",
+    delta=f"{tr_d:+.3f} vs platform" if abs(tr_d) > 0.0001 else None,
+    help="Deduplicated instructor rating mean across active teachers (1–5 scale).",
 )
 k2.metric(
     "Avg Course Rating",
-    f"{avg_cr:.2f} / 5.0",
-    delta=f"{cr_d:+.2f} vs all" if abs(cr_d) > 0.001 else None,
-    help="Mean rating given to course content by learners (1–5 scale).",
+    f"{avg_cr:.4f} / 5.0",
+    delta=f"{cr_d:+.4f} vs platform" if abs(cr_d) > 0.0001 else None,
+    help="Enrollment-weighted course quality across active courses (1–5 scale).",
 )
 k3.metric(
     "Quality Consistency",
-    f"{rci:.2f}",
+    f"{rci:.3f}",
     help="1 = perfectly uniform quality across courses. 0 = highly variable.",
 )
 k4.metric(
-    "Experience Impact (r)",
-    f"{eis:.2f}",
-    help="Pearson correlation between years of experience and ratings. Closer to 1 = stronger link.",
+    "Experience Impact",
+    f"{slope_tr:+.3f}/yr" if not math.isnan(slope_tr) else "N/A",
+    delta=f"{slope_cr:+.3f}/yr on courses" if not math.isnan(slope_cr) else None,
+    delta_color="off",
+    help="OLS slope on Teacher Rating (+0.120/yr) and on weighted Course Rating (-0.0035/yr).",
 )
 k5.metric(
     "Enrollment Lift (Top Instructors)",
-    f"{eir:.1f}×",
+    f"{eir:.2f}×",
     delta="above platform avg" if eir > 1.0 else None,
     delta_color="normal",
-    help="High-rated instructors attract this many times more enrollments than the platform average.",
+    help="Ratio of average enrollments for high-rated instructors (≥4.0) vs platform average.",
 )
 
 # Glossary expander — compact, directly under KPIs without double dividers
@@ -1142,7 +1154,7 @@ with tab5:
         st.plotly_chart(fig_th, use_container_width=True)
         note(
             f"Instructor ratings range from <b>1.05 to 4.97</b>, average "
-            f"<b>{kpis['avg_teacher_rating']:.2f}</b>. Nearly half fall below 3.0."
+            f"<b>{kpis_v2['avg_teacher_rating'].value:.3f}</b>. Nearly half fall below 3.0."
         )
 
     with dist2:
@@ -1158,7 +1170,7 @@ with tab5:
         fig_ch.update_layout(height=360, **CHART_BASE)
         st.plotly_chart(fig_ch, use_container_width=True)
         note(
-            f"Course ratings average <b>{kpis['avg_course_rating']:.2f}/5</b> — "
+            f"Course ratings average <b>{kpis_v2['avg_course_rating'].value:.4f}/5</b> — "
             "driven by content quality, not instructor reputation."
         )
 
