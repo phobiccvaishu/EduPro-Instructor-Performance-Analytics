@@ -17,31 +17,35 @@ class TestSyntheticAggregation:
     """Hand-computed verification of enrollment weighting."""
 
     def test_hand_computed_teacher_weighting(self) -> None:
-        teachers = pd.DataFrame({
-            "TeacherID": [1, 2],
-            "TeacherName": ["Alice", "Bob"],
-            "Age": [30, 40],
-            "Gender": ["Female", "Male"],
-            "Expertise": ["Python", "Data Science"],
-            "YearsOfExperience": [5, 10],
-            "TeacherRating": [4.5, 3.5],
-        })
+        teachers = pd.DataFrame(
+            {
+                "TeacherID": [1, 2],
+                "TeacherName": ["Alice", "Bob"],
+                "Age": [30, 40],
+                "Gender": ["Female", "Male"],
+                "Expertise": ["Python", "Data Science"],
+                "YearsOfExperience": [5, 10],
+                "TeacherRating": [4.5, 3.5],
+            }
+        )
 
         # Alice teaches Course 101 (rating 4.0, 100 enr) and Course 102 (rating 5.0, 300 enr)
         # Expected weighted rating = (100*4.0 + 300*5.0) / 400 = 1900 / 400 = 4.75
         # Bob teaches Course 102 (rating 5.0, 200 enr)
         # Expected weighted rating = 5.0
-        master = pd.DataFrame({
-            "TeacherID": [1, 1, 2],
-            "TeacherName": ["Alice", "Alice", "Bob"],
-            "CourseID": [101, 102, 102],
-            "CourseName": ["Py101", "DS102", "DS102"],
-            "CourseCategory": ["Python", "Data Science", "Data Science"],
-            "CourseRating": [4.0, 5.0, 5.0],
-            "TeacherRating": [4.5, 4.5, 3.5],
-            "EnrollmentCount": [100, 300, 200],
-            "Expertise": ["Python", "Python", "Data Science"],
-        })
+        master = pd.DataFrame(
+            {
+                "TeacherID": [1, 1, 2],
+                "TeacherName": ["Alice", "Alice", "Bob"],
+                "CourseID": [101, 102, 102],
+                "CourseName": ["Py101", "DS102", "DS102"],
+                "CourseCategory": ["Python", "Data Science", "Data Science"],
+                "CourseRating": [4.0, 5.0, 5.0],
+                "TeacherRating": [4.5, 4.5, 3.5],
+                "EnrollmentCount": [100, 300, 200],
+                "Expertise": ["Python", "Python", "Data Science"],
+            }
+        )
 
         tt = teacher_table(teachers, master, attribution="enrollment_weighted")
         assert len(tt) == 2
@@ -78,7 +82,9 @@ class TestRealDataAggregation:
         assert pytest.approx(tt["enrollment_share"].sum(), abs=1e-4) == 1.0
 
         # Teacher tiers match config
-        assert set(tt["InstructorTier"].unique()).issubset({"High (≥4.0)", "Mid (3.0–3.9)", "Low (<3.0)"})
+        assert set(tt["InstructorTier"].unique()).issubset(
+            {"High (≥4.0)", "Mid (3.0–3.9)", "Low (<3.0)"}
+        )
 
     def test_sensitivity_min_enrollment_filter(self) -> None:
         ds = load_all()

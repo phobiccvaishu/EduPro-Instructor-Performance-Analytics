@@ -41,3 +41,29 @@ def golden_baseline() -> dict[str, Any]:
     path = Path(__file__).parent / "golden_baseline.json"
     with open(path, encoding="utf-8") as f:
         return json.load(f)
+
+
+@pytest.fixture(autouse=True, scope="session")
+def patch_windows_asyncio_for_streamlit_apptest():
+    """
+    On Windows in restricted sandboxes, socket.socketpair() hangs because loopback TCP is blocked.
+    Patch asyncio.new_event_loop so Streamlit LocalScriptRunner can instantiate without hanging.
+    """
+    import sys
+
+    if sys.platform == "win32":
+        import asyncio
+        from unittest.mock import MagicMock
+
+        orig_new_event_loop = asyncio.new_event_loop
+
+        def safe_new_event_loop():
+            m = MagicMock(spec=asyncio.AbstractEventLoop)
+            m.is_closed.return_value = False
+            return m
+
+        asyncio.new_event_loop = safe_new_event_loop
+        yield
+        asyncio.new_event_loop = orig_new_event_loop
+    else:
+        yield

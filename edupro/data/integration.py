@@ -40,9 +40,8 @@ def build_master(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
     transactions = tables["transactions"]
 
     # Step 1: aggregate transactions into (TeacherID, CourseID) enrollment counts
-    enrollments = (
-        transactions.groupby(["TeacherID", "CourseID"], as_index=False)
-        .agg(EnrollmentCount=("TransactionID", "count"))
+    enrollments = transactions.groupby(["TeacherID", "CourseID"], as_index=False).agg(
+        EnrollmentCount=("TransactionID", "count")
     )
 
     # Step 2: merge with courses

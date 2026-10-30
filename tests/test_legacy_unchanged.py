@@ -38,21 +38,39 @@ def test_legacy_keys_and_values_unchanged(dataset, golden_baseline):
         assert k in results, f"Missing legacy key: {k}"
 
     kpis = results["kpis"]
-    assert kpis["avg_teacher_rating"] == pytest.approx(golden_baseline["avg_teacher_rating"], abs=1e-4)
-    assert kpis["avg_course_rating"] == pytest.approx(golden_baseline["avg_course_rating"], abs=1e-4)
-    assert kpis["rating_consistency_index"] == pytest.approx(golden_baseline["rating_consistency_index"], abs=1e-4)
+    assert kpis["avg_teacher_rating"] == pytest.approx(
+        golden_baseline["avg_teacher_rating"], abs=1e-4
+    )
+    assert kpis["avg_course_rating"] == pytest.approx(
+        golden_baseline["avg_course_rating"], abs=1e-4
+    )
+    assert kpis["rating_consistency_index"] == pytest.approx(
+        golden_baseline["rating_consistency_index"], abs=1e-4
+    )
 
     # Experience impact legacy values
     exp_imp = kpis["experience_impact"]
     gold_exp = golden_baseline["experience_impact"]
-    for key in ("r_exp_teacher", "p_exp_teacher", "slope_exp_teacher",
-                "r_exp_course", "p_exp_course", "slope_exp_course", "impact_score"):
+    for key in (
+        "r_exp_teacher",
+        "p_exp_teacher",
+        "slope_exp_teacher",
+        "r_exp_course",
+        "p_exp_course",
+        "slope_exp_course",
+        "impact_score",
+    ):
         assert exp_imp[key] == pytest.approx(gold_exp[key], abs=1e-4), f"Mismatch in {key}"
 
     # Enrollment influence legacy values
     enr_inf = kpis["enrollment_influence"]
     gold_enr = golden_baseline["enrollment_influence"]
-    for key in ("avg_enrollment_high", "avg_enrollment_low", "avg_enrollment_all", "enrollment_influence_ratio"):
+    for key in (
+        "avg_enrollment_high",
+        "avg_enrollment_low",
+        "avg_enrollment_all",
+        "enrollment_influence_ratio",
+    ):
         assert enr_inf[key] == pytest.approx(gold_enr[key], abs=1e-4), f"Mismatch in {key}"
 
     # Teacher course correlation legacy values

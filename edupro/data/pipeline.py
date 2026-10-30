@@ -85,7 +85,9 @@ def load_all(path: Path | str | None = None, strict: bool = True) -> Dataset:
 
     # 4. Strict mode failure check
     if strict and validation_report.has_failures:
-        failure_messages = [f"[{f.category}] {f.name}: {f.detail}" for f in validation_report.failures()]
+        failure_messages = [
+            f"[{f.category}] {f.name}: {f.detail}" for f in validation_report.failures()
+        ]
         error_msg = (
             f"Dataset validation failed with {len(failure_messages)} error(s) in strict mode:\n"
             + "\n".join(f"  - {msg}" for msg in failure_messages)

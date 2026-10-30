@@ -34,37 +34,66 @@ def test_characterization_golden_baseline_match(dataset, golden_baseline):
     assert int(dataset.master["EnrollmentCount"].sum()) == golden_baseline["enrollment_count_total"]
 
     # 2. Platform KPIs
-    assert kpis["avg_teacher_rating"] == pytest.approx(golden_baseline["avg_teacher_rating"], abs=1e-4)
-    assert kpis["avg_course_rating"] == pytest.approx(golden_baseline["avg_course_rating"], abs=1e-4)
-    assert kpis["rating_consistency_index"] == pytest.approx(golden_baseline["rating_consistency_index"], abs=1e-4)
+    assert kpis["avg_teacher_rating"] == pytest.approx(
+        golden_baseline["avg_teacher_rating"], abs=1e-4
+    )
+    assert kpis["avg_course_rating"] == pytest.approx(
+        golden_baseline["avg_course_rating"], abs=1e-4
+    )
+    assert kpis["rating_consistency_index"] == pytest.approx(
+        golden_baseline["rating_consistency_index"], abs=1e-4
+    )
 
     # 3. Experience impact
     exp_imp = kpis["experience_impact"]
     gold_exp = golden_baseline["experience_impact"]
-    for key in ("r_exp_teacher", "p_exp_teacher", "slope_exp_teacher",
-                "r_exp_course", "p_exp_course", "slope_exp_course", "impact_score"):
+    for key in (
+        "r_exp_teacher",
+        "p_exp_teacher",
+        "slope_exp_teacher",
+        "r_exp_course",
+        "p_exp_course",
+        "slope_exp_course",
+        "impact_score",
+    ):
         assert exp_imp[key] == pytest.approx(gold_exp[key], abs=1e-4), f"Mismatch in {key}"
 
     # 4. Enrollment influence
     enr_inf = kpis["enrollment_influence"]
     gold_enr = golden_baseline["enrollment_influence"]
-    for key in ("avg_enrollment_high", "avg_enrollment_low", "avg_enrollment_all",
-                "enrollment_influence_ratio"):
+    for key in (
+        "avg_enrollment_high",
+        "avg_enrollment_low",
+        "avg_enrollment_all",
+        "enrollment_influence_ratio",
+    ):
         assert enr_inf[key] == pytest.approx(gold_enr[key], abs=1e-4), f"Mismatch in {key}"
 
     # 5. Tier counts
     impact_tier_summary = results["instructor_impact"]["tier_summary"]
     computed_tier_counts = dict(
-        zip(impact_tier_summary["InstructorTier"], impact_tier_summary["instructor_count"], strict=True)
+        zip(
+            impact_tier_summary["InstructorTier"],
+            impact_tier_summary["instructor_count"],
+            strict=True,
+        )
     )
     assert computed_tier_counts == golden_baseline["tier_counts"]
 
     # 6. Stage-3 experience vs performance
     evp = results["experience_vs_performance"]
     gold_evp = golden_baseline["stage_3_experience_vs_performance"]
-    for key in ("pearson_r_teacher", "pearson_p_teacher", "spearman_r_teacher",
-                "spearman_p_teacher", "pearson_r_course", "pearson_p_course"):
-        assert evp[key] == pytest.approx(gold_exp[key] if key in gold_exp else gold_evp[key], abs=1e-4), f"Mismatch in {key}"
+    for key in (
+        "pearson_r_teacher",
+        "pearson_p_teacher",
+        "spearman_r_teacher",
+        "spearman_p_teacher",
+        "pearson_r_course",
+        "pearson_p_course",
+    ):
+        assert evp[key] == pytest.approx(
+            gold_exp[key] if key in gold_exp else gold_evp[key], abs=1e-4
+        ), f"Mismatch in {key}"
 
     # 7. Teacher course correlation
     tc = results["teacher_course_corr"]

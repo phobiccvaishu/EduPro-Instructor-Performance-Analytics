@@ -54,9 +54,15 @@ def test_loader_missing_required_column(tmp_path):
     """Verify ValueError naming missing columns if a required column is omitted."""
     dummy_file = tmp_path / "missing_col.xlsx"
     with pd.ExcelWriter(dummy_file, engine="openpyxl") as writer:
-        pd.DataFrame({"TeacherID": ["T1"], "TeacherName": ["Alice"]}).to_excel(writer, sheet_name="Teachers", index=False)
-        pd.DataFrame({"CourseID": ["C1"], "CourseRating": [4.0]}).to_excel(writer, sheet_name="Courses", index=False)
-        pd.DataFrame({"TransactionID": ["TX1"]}).to_excel(writer, sheet_name="Transactions", index=False)
+        pd.DataFrame({"TeacherID": ["T1"], "TeacherName": ["Alice"]}).to_excel(
+            writer, sheet_name="Teachers", index=False
+        )
+        pd.DataFrame({"CourseID": ["C1"], "CourseRating": [4.0]}).to_excel(
+            writer, sheet_name="Courses", index=False
+        )
+        pd.DataFrame({"TransactionID": ["TX1"]}).to_excel(
+            writer, sheet_name="Transactions", index=False
+        )
         pd.DataFrame({"UserID": ["U1"]}).to_excel(writer, sheet_name="Users", index=False)
 
     with pytest.raises(ValueError) as exc_info:

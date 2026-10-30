@@ -70,16 +70,18 @@ class ValidationReport:
 
     def to_frame(self) -> pd.DataFrame:
         """Export checks as a pandas DataFrame."""
-        return pd.DataFrame([
-            {
-                "category": r.category,
-                "name": r.name,
-                "status": r.status.value,
-                "value": str(r.value),
-                "detail": r.detail,
-            }
-            for r in self.results
-        ])
+        return pd.DataFrame(
+            [
+                {
+                    "category": r.category,
+                    "name": r.name,
+                    "status": r.status.value,
+                    "value": str(r.value),
+                    "detail": r.detail,
+                }
+                for r in self.results
+            ]
+        )
 
     def summary(self) -> str:
         """Human-readable formatted summary table."""
@@ -88,9 +90,7 @@ class ValidationReport:
             "-" * 95,
         ]
         for r in self.results:
-            lines.append(
-                f"{r.category:<22} | {r.name:<38} | {r.status.value:<6} | {r.detail}"
-            )
+            lines.append(f"{r.category:<22} | {r.name:<38} | {r.status.value:<6} | {r.detail}")
         status_counts = pd.Series([r.status.value for r in self.results]).value_counts().to_dict()
         lines.append("-" * 95)
         lines.append(f"Total Checks: {len(self.results)} | Counts: {status_counts}")
@@ -101,17 +101,31 @@ def validate_mapping(master: pd.DataFrame) -> dict[str, Any]:
     """
     Backward-compatible summary for Stage 1 data integration.
     """
-    has_teacher_rating = master["TeacherRating"].notna() if "TeacherRating" in master.columns else pd.Series(False, index=master.index)
-    mapping_accuracy = round(100.0 * float(has_teacher_rating.mean()), 2) if len(master) > 0 else 0.0
+    has_teacher_rating = (
+        master["TeacherRating"].notna()
+        if "TeacherRating" in master.columns
+        else pd.Series(False, index=master.index)
+    )
+    mapping_accuracy = (
+        round(100.0 * float(has_teacher_rating.mean()), 2) if len(master) > 0 else 0.0
+    )
 
     return {
         "total_records": len(master),
         "unique_teachers": master["TeacherID"].nunique() if "TeacherID" in master.columns else 0,
         "unique_courses": master["CourseID"].nunique() if "CourseID" in master.columns else 0,
-        "missing_teacher_rating": int(master["TeacherRating"].isna().sum()) if "TeacherRating" in master.columns else 0,
-        "missing_course_rating": int(master["CourseRating"].isna().sum()) if "CourseRating" in master.columns else 0,
-        "courses_without_teacher": int(master[master["TeacherName"].isna()].shape[0]) if "TeacherName" in master.columns else 0,
-        "courses_without_rating": int(master[master["CourseRating"].isna()].shape[0]) if "CourseRating" in master.columns else 0,
+        "missing_teacher_rating": int(master["TeacherRating"].isna().sum())
+        if "TeacherRating" in master.columns
+        else 0,
+        "missing_course_rating": int(master["CourseRating"].isna().sum())
+        if "CourseRating" in master.columns
+        else 0,
+        "courses_without_teacher": int(master[master["TeacherName"].isna()].shape[0])
+        if "TeacherName" in master.columns
+        else 0,
+        "courses_without_rating": int(master[master["CourseRating"].isna()].shape[0])
+        if "CourseRating" in master.columns
+        else 0,
         "mapping_accuracy_pct": mapping_accuracy,
     }
 
@@ -178,7 +192,9 @@ def validate_all(tables: dict[str, pd.DataFrame]) -> ValidationReport:
                     category="Completeness",
                     status=status,
                     value=dups,
-                    detail="No duplicate primary keys" if dups == 0 else f"{dups} duplicate primary keys found",
+                    detail="No duplicate primary keys"
+                    if dups == 0
+                    else f"{dups} duplicate primary keys found",
                 )
             )
 
@@ -202,7 +218,9 @@ def validate_all(tables: dict[str, pd.DataFrame]) -> ValidationReport:
                         category="Completeness",
                         status=status,
                         value=nulls,
-                        detail="Zero null values" if nulls == 0 else f"{nulls} missing values in required key",
+                        detail="Zero null values"
+                        if nulls == 0
+                        else f"{nulls} missing values in required key",
                     )
                 )
 
@@ -216,7 +234,9 @@ def validate_all(tables: dict[str, pd.DataFrame]) -> ValidationReport:
                 category="Completeness",
                 status=status,
                 value=null_prices,
-                detail="Zero null prices" if null_prices == 0 else f"{null_prices} courses have missing CoursePrice",
+                detail="Zero null prices"
+                if null_prices == 0
+                else f"{null_prices} courses have missing CoursePrice",
             )
         )
 
@@ -229,7 +249,9 @@ def validate_all(tables: dict[str, pd.DataFrame]) -> ValidationReport:
                 category="Completeness",
                 status=status,
                 value=null_amounts,
-                detail="Zero null amounts" if null_amounts == 0 else f"{null_amounts} transactions have missing Amount",
+                detail="Zero null amounts"
+                if null_amounts == 0
+                else f"{null_amounts} transactions have missing Amount",
             )
         )
 
@@ -240,38 +262,56 @@ def validate_all(tables: dict[str, pd.DataFrame]) -> ValidationReport:
         total_tx = len(transactions)
 
         # TeacherID in Teachers
-        orphan_teachers = int((~transactions["TeacherID"].isin(teachers["TeacherID"])).sum()) if "TeacherID" in teachers.columns else total_tx
+        orphan_teachers = (
+            int((~transactions["TeacherID"].isin(teachers["TeacherID"])).sum())
+            if "TeacherID" in teachers.columns
+            else total_tx
+        )
         results.append(
             CheckResult(
                 name="Referential Integrity: Transactions.TeacherID",
                 category="Referential Integrity",
                 status=CheckStatus.FAIL if orphan_teachers > 0 else CheckStatus.PASS,
                 value=orphan_teachers,
-                detail=f"{orphan_teachers} orphan TeacherID references" if orphan_teachers > 0 else "All TeacherIDs valid",
+                detail=f"{orphan_teachers} orphan TeacherID references"
+                if orphan_teachers > 0
+                else "All TeacherIDs valid",
             )
         )
 
         # CourseID in Courses
-        orphan_courses = int((~transactions["CourseID"].isin(courses["CourseID"])).sum()) if "CourseID" in courses.columns else total_tx
+        orphan_courses = (
+            int((~transactions["CourseID"].isin(courses["CourseID"])).sum())
+            if "CourseID" in courses.columns
+            else total_tx
+        )
         results.append(
             CheckResult(
                 name="Referential Integrity: Transactions.CourseID",
                 category="Referential Integrity",
                 status=CheckStatus.FAIL if orphan_courses > 0 else CheckStatus.PASS,
                 value=orphan_courses,
-                detail=f"{orphan_courses} orphan CourseID references" if orphan_courses > 0 else "All CourseIDs valid",
+                detail=f"{orphan_courses} orphan CourseID references"
+                if orphan_courses > 0
+                else "All CourseIDs valid",
             )
         )
 
         # UserID in Users
-        orphan_users = int((~transactions["UserID"].isin(users["UserID"])).sum()) if "UserID" in users.columns else total_tx
+        orphan_users = (
+            int((~transactions["UserID"].isin(users["UserID"])).sum())
+            if "UserID" in users.columns
+            else total_tx
+        )
         results.append(
             CheckResult(
                 name="Referential Integrity: Transactions.UserID",
                 category="Referential Integrity",
                 status=CheckStatus.FAIL if orphan_users > 0 else CheckStatus.PASS,
                 value=orphan_users,
-                detail=f"{orphan_users} orphan UserID references" if orphan_users > 0 else "All UserIDs valid",
+                detail=f"{orphan_users} orphan UserID references"
+                if orphan_users > 0
+                else "All UserIDs valid",
             )
         )
 
@@ -298,26 +338,40 @@ def validate_all(tables: dict[str, pd.DataFrame]) -> ValidationReport:
     # -------------------------------------------------------------------------
     # Rating range: 1.0 to 5.0
     if "TeacherRating" in teachers.columns:
-        invalid_tr = int(((teachers["TeacherRating"] < settings.min_rating) | (teachers["TeacherRating"] > settings.max_rating)).sum())
+        invalid_tr = int(
+            (
+                (teachers["TeacherRating"] < settings.min_rating)
+                | (teachers["TeacherRating"] > settings.max_rating)
+            ).sum()
+        )
         results.append(
             CheckResult(
                 name="Range: TeacherRating in [1.0, 5.0]",
                 category="Range",
                 status=CheckStatus.FAIL if invalid_tr > 0 else CheckStatus.PASS,
                 value=invalid_tr,
-                detail=f"{invalid_tr} out-of-range TeacherRatings" if invalid_tr > 0 else "All TeacherRatings within [1.0, 5.0]",
+                detail=f"{invalid_tr} out-of-range TeacherRatings"
+                if invalid_tr > 0
+                else "All TeacherRatings within [1.0, 5.0]",
             )
         )
 
     if "CourseRating" in courses.columns:
-        invalid_cr = int(((courses["CourseRating"] < settings.min_rating) | (courses["CourseRating"] > settings.max_rating)).sum())
+        invalid_cr = int(
+            (
+                (courses["CourseRating"] < settings.min_rating)
+                | (courses["CourseRating"] > settings.max_rating)
+            ).sum()
+        )
         results.append(
             CheckResult(
                 name="Range: CourseRating in [1.0, 5.0]",
                 category="Range",
                 status=CheckStatus.FAIL if invalid_cr > 0 else CheckStatus.PASS,
                 value=invalid_cr,
-                detail=f"{invalid_cr} out-of-range CourseRatings" if invalid_cr > 0 else "All CourseRatings within [1.0, 5.0]",
+                detail=f"{invalid_cr} out-of-range CourseRatings"
+                if invalid_cr > 0
+                else "All CourseRatings within [1.0, 5.0]",
             )
         )
 
@@ -336,7 +390,9 @@ def validate_all(tables: dict[str, pd.DataFrame]) -> ValidationReport:
                     category="Range",
                     status=CheckStatus.FAIL if invalid_age > 0 else CheckStatus.PASS,
                     value=invalid_age,
-                    detail=f"{invalid_age} ages outside [{min_a}, {max_a}]" if invalid_age > 0 else f"All ages within [{min_a}, {max_a}]",
+                    detail=f"{invalid_age} ages outside [{min_a}, {max_a}]"
+                    if invalid_age > 0
+                    else f"All ages within [{min_a}, {max_a}]",
                 )
             )
 
@@ -349,20 +405,26 @@ def validate_all(tables: dict[str, pd.DataFrame]) -> ValidationReport:
                 category="Range",
                 status=CheckStatus.FAIL if neg_exp > 0 else CheckStatus.PASS,
                 value=neg_exp,
-                detail=f"{neg_exp} negative experience values" if neg_exp > 0 else "All experience values non-negative",
+                detail=f"{neg_exp} negative experience values"
+                if neg_exp > 0
+                else "All experience values non-negative",
             )
         )
 
         if "Age" in teachers.columns:
             exp_check = teachers.dropna(subset=["Age", "YearsOfExperience"])
-            invalid_career_start = int((exp_check["Age"] - exp_check["YearsOfExperience"] < 18).sum())
+            invalid_career_start = int(
+                (exp_check["Age"] - exp_check["YearsOfExperience"] < 18).sum()
+            )
             results.append(
                 CheckResult(
                     name="Constraint: Age - YearsOfExperience >= 18",
                     category="Range",
                     status=CheckStatus.WARN if invalid_career_start > 0 else CheckStatus.PASS,
                     value=invalid_career_start,
-                    detail=f"{invalid_career_start} instructors with implied career start age < 18" if invalid_career_start > 0 else "All instructors career start age >= 18",
+                    detail=f"{invalid_career_start} instructors with implied career start age < 18"
+                    if invalid_career_start > 0
+                    else "All instructors career start age >= 18",
                 )
             )
 
@@ -375,7 +437,9 @@ def validate_all(tables: dict[str, pd.DataFrame]) -> ValidationReport:
                 category="Range",
                 status=CheckStatus.FAIL if neg_prices > 0 else CheckStatus.PASS,
                 value=neg_prices,
-                detail=f"{neg_prices} negative course prices" if neg_prices > 0 else "All course prices non-negative",
+                detail=f"{neg_prices} negative course prices"
+                if neg_prices > 0
+                else "All course prices non-negative",
             )
         )
 
@@ -387,7 +451,9 @@ def validate_all(tables: dict[str, pd.DataFrame]) -> ValidationReport:
                 category="Range",
                 status=CheckStatus.FAIL if neg_dur > 0 else CheckStatus.PASS,
                 value=neg_dur,
-                detail=f"{neg_dur} non-positive durations" if neg_dur > 0 else "All course durations positive",
+                detail=f"{neg_dur} non-positive durations"
+                if neg_dur > 0
+                else "All course durations positive",
             )
         )
 
@@ -399,7 +465,9 @@ def validate_all(tables: dict[str, pd.DataFrame]) -> ValidationReport:
                 category="Range",
                 status=CheckStatus.FAIL if neg_amounts > 0 else CheckStatus.PASS,
                 value=neg_amounts,
-                detail=f"{neg_amounts} negative transaction amounts" if neg_amounts > 0 else "All amounts non-negative",
+                detail=f"{neg_amounts} negative transaction amounts"
+                if neg_amounts > 0
+                else "All amounts non-negative",
             )
         )
 
@@ -408,14 +476,18 @@ def validate_all(tables: dict[str, pd.DataFrame]) -> ValidationReport:
         invalid_dates = int(transactions["TransactionDate"].isna().sum())
         now_ts = pd.Timestamp.now() + pd.Timedelta(days=1)
         future_dates = int((transactions["TransactionDate"].dropna() > now_ts).sum())
-        date_status = CheckStatus.FAIL if (invalid_dates > 0 or future_dates > 0) else CheckStatus.PASS
+        date_status = (
+            CheckStatus.FAIL if (invalid_dates > 0 or future_dates > 0) else CheckStatus.PASS
+        )
         results.append(
             CheckResult(
                 name="Range: Transactions.TransactionDate valid & not in future",
                 category="Range",
                 status=date_status,
                 value=f"unparsed: {invalid_dates}, future: {future_dates}",
-                detail="All transaction dates parse and are not in the future" if date_status == CheckStatus.PASS else f"Found {invalid_dates} unparsed and {future_dates} future dates",
+                detail="All transaction dates parse and are not in the future"
+                if date_status == CheckStatus.PASS
+                else f"Found {invalid_dates} unparsed and {future_dates} future dates",
             )
         )
 
@@ -423,7 +495,11 @@ def validate_all(tables: dict[str, pd.DataFrame]) -> ValidationReport:
     # 6. Consistency Checks
     # -------------------------------------------------------------------------
     # Amount equals CoursePrice
-    if "Amount" in transactions.columns and "CoursePrice" in courses.columns and "CourseID" in transactions.columns:
+    if (
+        "Amount" in transactions.columns
+        and "CoursePrice" in courses.columns
+        and "CourseID" in transactions.columns
+    ):
         merged_prices = transactions[["CourseID", "Amount"]].merge(
             courses[["CourseID", "CoursePrice"]],
             on="CourseID",
@@ -436,7 +512,9 @@ def validate_all(tables: dict[str, pd.DataFrame]) -> ValidationReport:
                 category="Consistency",
                 status=CheckStatus.FAIL if price_mismatches > 0 else CheckStatus.PASS,
                 value=price_mismatches,
-                detail=f"{price_mismatches} price mismatches between transactions and course catalog" if price_mismatches > 0 else "Zero price mismatches (100% exact match)",
+                detail=f"{price_mismatches} price mismatches between transactions and course catalog"
+                if price_mismatches > 0
+                else "Zero price mismatches (100% exact match)",
             )
         )
 
@@ -449,14 +527,20 @@ def validate_all(tables: dict[str, pd.DataFrame]) -> ValidationReport:
                 category="Consistency",
                 status=CheckStatus.WARN if dup_enrollments > 0 else CheckStatus.PASS,
                 value=dup_enrollments,
-                detail=f"{dup_enrollments} duplicate user-course enrollments" if dup_enrollments > 0 else "Zero duplicate enrollments per user-course pair",
+                detail=f"{dup_enrollments} duplicate user-course enrollments"
+                if dup_enrollments > 0
+                else "Zero duplicate enrollments per user-course pair",
             )
         )
 
     # -------------------------------------------------------------------------
     # 7. Relationship Cardinality (INFO)
     # -------------------------------------------------------------------------
-    if not transactions.empty and "TeacherID" in transactions.columns and "CourseID" in transactions.columns:
+    if (
+        not transactions.empty
+        and "TeacherID" in transactions.columns
+        and "CourseID" in transactions.columns
+    ):
         tpc = transactions.groupby("CourseID")["TeacherID"].nunique()
         cpt = transactions.groupby("TeacherID")["CourseID"].nunique()
         pairs = transactions.groupby(["TeacherID", "CourseID"])["TransactionID"].count()
@@ -497,9 +581,7 @@ def validate_all(tables: dict[str, pd.DataFrame]) -> ValidationReport:
     ):
         enr_align = transactions.merge(
             teachers[["TeacherID", "Expertise"]], on="TeacherID", how="left"
-        ).merge(
-            courses[["CourseID", "CourseCategory"]], on="CourseID", how="left"
-        )
+        ).merge(courses[["CourseID", "CourseCategory"]], on="CourseID", how="left")
         alignment_rate = float((enr_align["Expertise"] == enr_align["CourseCategory"]).mean())
         align_pct = round(100.0 * alignment_rate, 2)
         results.append(

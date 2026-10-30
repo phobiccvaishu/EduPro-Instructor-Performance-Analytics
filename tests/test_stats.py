@@ -68,11 +68,16 @@ class TestBootstrapCI:
 
     def test_cluster_bootstrap(self) -> None:
         import pandas as pd
-        df = pd.DataFrame({
-            "val": [10.0, 12.0, 100.0, 102.0],
-            "cid": ["A", "A", "B", "B"],
-        })
-        ci = bootstrap_ci(df, lambda d: float(d["val"].mean()), n_boot=200, seed=42, cluster_ids=df["cid"])
+
+        df = pd.DataFrame(
+            {
+                "val": [10.0, 12.0, 100.0, 102.0],
+                "cid": ["A", "A", "B", "B"],
+            }
+        )
+        ci = bootstrap_ci(
+            df, lambda d: float(d["val"].mean()), n_boot=200, seed=42, cluster_ids=df["cid"]
+        )
         assert not np.isnan(ci[0])
         assert not np.isnan(ci[1])
 

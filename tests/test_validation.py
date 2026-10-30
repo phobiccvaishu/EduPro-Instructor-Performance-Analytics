@@ -17,7 +17,9 @@ def test_validation_passes_on_real_data(cleaned_tables_and_log):
     tables, _ = cleaned_tables_and_log
     report = validate_all(tables)
 
-    assert not report.has_failures, f"Unexpected validation failures: {[f.name for f in report.failures()]}"
+    assert not report.has_failures, (
+        f"Unexpected validation failures: {[f.name for f in report.failures()]}"
+    )
     assert report.has_warnings, "Expected at least one warning (e.g. small groups)"
 
     # Check for expected INFO check results

@@ -29,11 +29,12 @@ The following legacy keys and methods are marked deprecated in Step 2 and schedu
 
 ---
 
-## Step 3 — Filter Logic & Dashboard State Management
+## Step 3 — Filter Logic & Dashboard State Management (Resolved in Step 3)
 
-- **[STEP-3-001] Slider Bounds Truncation**: Sidebar sliders use `round()` on min/max rating values. Under the default view, this rounding hides 3 instructors with ratings 1.05 to 1.07 (slider starts at 1.1) and hides the highest-rated course at 4.94 (slider ends at 4.9).
-- **[STEP-3-002] Disconnected Tab Filters**: Several tabs compute statistics on the global `master` or raw DataFrames rather than respecting active sidebar filters.
-- **[STEP-3-003] KPI Tile Filter Inconsistency**: Two top-level KPI summary tiles ignore active cohort filter selections.
+- **[STEP-3-001] [RESOLVED] Slider Bounds Truncation**: Resolved via `FilterBounds.from_dataset(dataset)` with `floor_2d()` and `ceil_2d()`. Teacher rating slider spans [1.05, 4.97] and course rating slider spans [1.12, 4.95], retaining 100% of rows (60 teachers, 60 courses, 887 pairs, 10,000 enrollments) in default view.
+- **[STEP-3-002] [RESOLVED] Disconnected Tab Filters**: Resolved via `FilteredView` and `apply_filters(dataset, state)`. All 5 dashboard tabs and charts read dynamically from `view.teacher_table`, `view.course_table`, and `view.master`.
+- **[STEP-3-003] [RESOLVED] KPI Tile Filter Inconsistency**: Resolved by wiring all 5 top-level KPI metrics to read directly from the dynamically filtered `kpis` bundle.
+- **[STEP-3-004] [RESOLVED] Small-n UI Degradation**: Trendlines in Plotly scatter charts are conditionally suppressed when $n < 3$ or when $x$-values are uniform, preventing statsmodels collinearity exceptions on narrow slices. Empty slices display a user-friendly guidance alert (`st.info`) via the `view.is_empty` guard.
 
 ---
 

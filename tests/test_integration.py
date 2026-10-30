@@ -12,7 +12,9 @@ def test_master_dataset_structure_and_counts(dataset):
     master = dataset.master
 
     assert len(master) == 887, f"Expected 887 master rows, got {len(master)}"
-    assert int(master["EnrollmentCount"].sum()) == 10000, "Expected EnrollmentCount sum to be 10,000"
+    assert int(master["EnrollmentCount"].sum()) == 10000, (
+        "Expected EnrollmentCount sum to be 10,000"
+    )
     assert master["TeacherID"].nunique() == 60, "Expected 60 unique teachers in master"
     assert master["CourseID"].nunique() == 60, "Expected 60 unique courses in master"
 
