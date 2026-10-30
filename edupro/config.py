@@ -118,6 +118,10 @@ class Settings:
         else:
             return self.tier_low_label
 
+    def classify_tier(self, rating: float | None) -> str:
+        """Alias for get_tier."""
+        return self.get_tier(rating)
+
 
 def get_correlation_effect(r: float | None) -> str:
     """Classify correlation effect size according to standard Cohen benchmarks."""
