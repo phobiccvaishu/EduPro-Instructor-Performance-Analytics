@@ -489,16 +489,10 @@ class AnalyticsEngine:
             cfg if cfg is not None else (config if config is not None else default_analysis_config)
         )
 
-        # Legacy 6 stages and KPIs (strictly preserved)
-        legacy_kpis = self.kpi.compute_all_kpis()
+        # Stage summaries
         per_inst_cons = self.kpi.per_instructor_consistency()
         integ_summary = self.data_integration_summary()
         inst_profiles = self.instructor_profiles()
-        exp_perf = self.experience_vs_performance()
-        course_qual = self.course_quality_evaluation()
-        inst_impact = self.instructor_impact()
-        exp_impact = self.expertise_performance()
-        teacher_course_corr = self.teacher_course_rating_correlation()
 
         # Step 2 additions: Entity tables
         tt = teacher_table(
@@ -535,20 +529,13 @@ class AnalyticsEngine:
         elapsed = time.perf_counter() - t0
 
         return {
-            # Legacy outputs
-            "kpis": legacy_kpis,
-            "per_instructor_consistency": per_inst_cons,
-            "integration_summary": integ_summary,
-            "instructor_profiles": inst_profiles,
-            "experience_vs_performance": exp_perf,
-            "course_quality": course_qual,
-            "instructor_impact": inst_impact,
-            "expertise_performance": exp_impact,
-            "teacher_course_corr": teacher_course_corr,
-            # Statistical enhancements (Step 2)
+            # Modern analytics outputs (v2.0)
             "entity_tables": {"teachers": tt, "courses": ct},
             "findings": findings,
             "kpis_v2": kpis_v2,
+            "per_instructor_consistency": per_inst_cons,
+            "integration_summary": integ_summary,
+            "instructor_profiles": inst_profiles,
             "meta": {
                 "seed": cfg.seed,
                 "alpha": cfg.alpha,
