@@ -213,3 +213,77 @@ def test_filter_scope_matrix_cell(
         f"Scope cell failed for ({filter_name}, {target_name}): "
         f"expected changed={expected_changed}, got changed={changed} on {feeding_obj}"
     )
+
+
+def test_specific_plotted_aggregates_scope(dataset):
+    """
+    Item 23: Evaluates the exact plotted aggregate in each tab and documents honest no-effect cells:
+    - Tab 1: Rankings total enrollments mutated on all 7 filters.
+    - Tab 2: Intrinsic TeacherRating vs YearsOfExperience scatter is UNCHANGED under
+      course_level and course_rating_range because all 60 instructors teach at least one advanced
+      and high-rated course, leaving teacher demographics identical.
+    - Tab 3: Heatmap matrix changes on all 7 filters.
+    - Tab 4: Domain mean CourseRating changes on all 7 filters.
+    - Tab 5: Master pair ratings change on all 7 filters.
+    - Raw catalogs: view.courses unchanged under teacher filters; view.teachers unchanged under course filters.
+    """
+    base = apply_filters(dataset, FilterState.default(dataset))
+    base_t2_scatter = (
+        base.teacher_table[["YearsOfExperience", "TeacherRating"]]
+        .sort_values(by="YearsOfExperience")
+        .reset_index(drop=True)
+    )
+
+    for f_name, f_state in SCOPE_FILTERS:
+        v = apply_filters(dataset, f_state)
+
+        # Tab 1: Rankings enrollment aggregate
+        assert not v.teacher_table["total_enrollments"].equals(
+            base.teacher_table["total_enrollments"]
+        )
+
+        # Tab 2: Intrinsic Teacher demographics scatter
+        v_t2_scatter = (
+            v.teacher_table[["YearsOfExperience", "TeacherRating"]]
+            .sort_values(by="YearsOfExperience")
+            .reset_index(drop=True)
+        )
+        if f_name in ("course_level", "course_rating_range"):
+            # Honest no-effect: all 60 instructors remain active
+            assert v_t2_scatter.equals(base_t2_scatter), (
+                f"Expected Tab 2 intrinsic scatter to be unchanged under {f_name}"
+            )
+        else:
+            assert not v_t2_scatter.equals(base_t2_scatter), (
+                f"Expected Tab 2 intrinsic scatter to change under {f_name}"
+            )
+
+        # Tab 3: Heatmap matrix
+        v_hm = v.master.pivot_table(
+            index="CourseCategory", columns="CourseLevel", values="CourseRating", aggfunc="mean"
+        )
+        base_hm = base.master.pivot_table(
+            index="CourseCategory", columns="CourseLevel", values="CourseRating", aggfunc="mean"
+        )
+        assert not v_hm.equals(base_hm)
+
+        # Tab 4: Domain mean CourseRating
+        v_dm = v.master.groupby("CourseCategory")["CourseRating"].mean()
+        base_dm = base.master.groupby("CourseCategory")["CourseRating"].mean()
+        assert not v_dm.equals(base_dm)
+
+        # Tab 5: Master pair ratings
+        v_pairs = v.master[["TeacherRating", "CourseRating"]].reset_index(drop=True)
+        base_pairs = base.master[["TeacherRating", "CourseRating"]].reset_index(drop=True)
+        assert not v_pairs.equals(base_pairs)
+
+        # Raw catalogs orthogonal invariance
+        if f_name in (
+            "expertise",
+            "instructor_gender",
+            "teacher_rating_range",
+            "experience_range",
+        ):
+            assert v.courses.equals(base.courses)
+        elif f_name in ("course_category", "course_level", "course_rating_range"):
+            assert v.teachers.equals(base.teachers)

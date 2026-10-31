@@ -49,6 +49,11 @@ streamlit run app.py
 # Run complete test suite
 pytest
 
+# On Windows environments where sandbox security policies restrict loopback socket pairs
+# and cause Streamlit AppTest workers to hang, set EDUPRO_TEST_SANDBOX=1:
+# PowerShell:
+$env:EDUPRO_TEST_SANDBOX="1"; pytest
+
 # Run linting check
 ruff check .
 

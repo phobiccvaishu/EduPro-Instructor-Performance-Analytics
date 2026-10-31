@@ -101,7 +101,19 @@ While all 42 UI targets mutate because the transaction graph interconnects instr
 - **`view.courses` (raw catalog) under teacher-only filters** (`expertise`, `instructor_gender`, `teacher_rating_range`, `experience_range`): **Unchanged** (`view.courses` retains all 60 courses). *Reason*: A filter on instructor attributes does not alter the course catalog definitions; only the transaction-weighted aggregates (`view.course_table`) and transaction pairs (`view.master`) are updated.
 - **`view.teachers` (raw roster) under course-only filters** (`course_category`, `course_level`, `course_rating_range`): **Unchanged** (`view.teachers` retains all 60 teachers). *Reason*: A filter on course metadata does not alter instructor demographic records; only active teaching status (`view.teacher_table`), enrollment counts, and transaction pairs (`view.master`) are updated. Instructors with zero active course enrollments are dropped from `view.teacher_table` with an explicit diagnostic note.
 
-> **Verification Evidence**: Automated regression test `test_filter_scope_matrix_cell` in `tests/test_filters.py` executes all 42 (filter $\times$ UI target) combinations in under 0.2s, verifying that every filter induces measurable, mathematically defensible changes in its primary feeding object.
+### 4.3 Specific Plotted Aggregates & Honest No-Effect Cells
+When zooming from DataFrame container mutation to the exact numerical and visual aggregates plotted on screen, certain cells exhibit honest **no-effect**:
+- **Tab 1: Rankings Table**: Total enrollments mutate across all 7 filters.
+- **Tab 2: Experience vs Instructor Rating Scatter Plot**:
+  - The scatter points (`YearsOfExperience` vs `TeacherRating`) and their OLS regression slope represent intrinsic instructor demographics.
+  - Under `course_level` (e.g., `Advanced`) and `course_rating_range` (e.g., $\ge 3.0$), **all 60 instructors teach at least one matching course**. Therefore, every instructor remains active, and their demographic attributes (`YearsOfExperience`, `TeacherRating`) are 100% identical to the unfiltered baseline.
+  - Hence, the Tab 2 instructor scatter plot exhibits an honest **Unchanged (no-effect)** status under course level and course rating filters.
+  - In contrast, the secondary plot in Tab 2 (`YearsOfExperience` vs `weighted_course_rating`) changes across all course filters because course ratings are re-weighted across the surviving transactions.
+- **Tab 3: Quality Heatmap**: The category $\times$ level mean CourseRating matrix mutates across all 7 filters.
+- **Tab 4: Domain Performance**: Domain-level mean CourseRating mutates across all 7 filters.
+- **Tab 5: Relationship Scatter**: Master transaction pairs (`TeacherRating` vs `CourseRating`) mutate across all 7 filters.
+
+> **Verification Evidence**: Automated regression tests `test_filter_scope_matrix_cell` and `test_specific_plotted_aggregates_scope` in `tests/test_filters.py` verify all 42 feeding-container cells and the specific visual aggregate behaviors (including the honest no-effect cells).
 
 ---
 
@@ -111,3 +123,4 @@ While all 42 UI targets mutate because the transaction graph interconnects instr
 - **Dynamic Scope Display**: Caption in the sidebar dynamically displays `"N of M instructors, N of M courses in view"`.
 - **Empty-State Guard**: If a user selects mutually exclusive filters that yield zero records, the app gracefully halts execution with a user-friendly guidance banner (`st.info`) and does not crash or display empty broken charts.
 - **Fast Estimates Notice**: When in dashboard mode, an explicit badge alerts users that fast estimates mode ($N_{boot} = 300$) is active for sub-second responsiveness, pointing to the CLI runner for publication-grade precision ($N_{boot} = 2,000$).
+- **Test Environment Variable (`EDUPRO_TEST_SANDBOX`)**: On Windows environments where Streamlit `AppTest` socket creation may be restricted by sandbox security policies, setting `EDUPRO_TEST_SANDBOX=1` activates sandbox-safe event loop execution.

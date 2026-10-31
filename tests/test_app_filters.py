@@ -260,6 +260,19 @@ def test_default_kpi_tiles_equal_step2_and_react_to_filters():
     assert lift_val == pytest.approx(expected_kpis["enrollment_influence"]["value"], abs=1e-4)
     assert lift_val == pytest.approx(3.72, abs=1e-4)
 
+    # Item 22: Verify 95% CIs rendered in tile captions
+    captions = [c.value for c in at.caption]
+    tile_captions = [
+        c
+        for c in captions
+        if ("95% CI:" in c or "TR CI:" in c) and ("n = 60" in c or "n = 887" in c)
+    ]
+    assert len(tile_captions) >= 5
+    # Verify Tile 4 dual slope CIs
+    assert any(
+        "TR CI: [+0.078, +0.163]" in c and "CR CI: [-0.020, +0.013]" in c for c in tile_captions
+    )
+
     # Filter test: Apply filter and verify KPI tiles change
     exp_ms = at.sidebar.multiselect(key="ui_sel_expertise")
     exp_ms.set_value(["Machine Learning"])
