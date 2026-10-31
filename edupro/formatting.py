@@ -3,6 +3,15 @@ edupro.formatting
 =================
 Centralized numerical formatting utilities enforcing Decimal ROUND_HALF_UP
 display semantics across all UI tiles, cards, tables, and insight strings.
+
+Public API
+----------
+fmt_half_up     -- general-purpose ROUND_HALF_UP formatter
+fmt_percent     -- fractional share -> percentage string
+fmt_int         -- integer with thousands separator
+fmt_ci          -- confidence interval [low, high] string
+fmt_p_value     -- p-value with small-p notation
+format_slope    -- regression slope with adaptive precision (4 dp when |v|<0.01)
 """
 
 from __future__ import annotations
@@ -127,3 +136,33 @@ def fmt_p_value(p: Any, decimals: int = 4, na_rep: str = "N/A") -> str:
     if dec < cutoff:
         return f"< 0.{'0' * (decimals - 1)}1"
     return fmt_half_up(dec, decimals=decimals, na_rep=na_rep)
+
+
+def format_slope(val: float | None, signed: bool = True) -> str:
+    """
+    Unified formatter for regression slopes.
+
+    Uses 4 decimal places when ``|val| < 0.01`` and 3 decimal places otherwise,
+    with ROUND_HALF_UP rounding.  Returns ``'N/A'`` for ``None`` or non-finite
+    inputs.
+
+    Parameters
+    ----------
+    val:
+        Slope value to format.  May be ``None`` or ``float('nan')``.
+    signed:
+        When ``True`` (default) a leading ``+`` is prepended to positive values.
+
+    Examples
+    --------
+    >>> format_slope(0.120444)
+    '+0.120'
+    >>> format_slope(-0.003509)
+    '-0.0035'
+    >>> format_slope(None)
+    'N/A'
+    """
+    if val is None or not math.isfinite(val):
+        return "N/A"
+    decimals = 4 if abs(val) < 0.01 else 3
+    return fmt_half_up(val, decimals=decimals, add_sign=signed)

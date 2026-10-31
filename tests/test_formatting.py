@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from edupro.formatting import fmt_ci, fmt_half_up, fmt_int, fmt_p_value, fmt_percent
+from edupro.formatting import fmt_ci, fmt_half_up, fmt_int, fmt_p_value, fmt_percent, format_slope
 
 
 def test_fmt_half_up_exact_ties():
@@ -46,3 +46,15 @@ def test_fmt_p_value():
     assert fmt_p_value(0.0583, 4) == "0.0583"
     assert fmt_p_value(0.00005, 4) == "< 0.0001"
     assert fmt_p_value(np.nan) == "N/A"
+
+
+def test_format_slope_canonical():
+    """format_slope is defined in edupro.formatting and importable from there."""
+    assert format_slope(0.120444) == "+0.120"
+    assert format_slope(-0.003509) == "-0.0035"
+    assert format_slope(0.0001) == "+0.0001"
+    assert format_slope(-0.0591) == "-0.059"
+    assert format_slope(None) == "N/A"
+    assert format_slope(float("nan")) == "N/A"
+    assert format_slope(0.120, signed=False) == "0.120"
+    assert format_slope(-0.0035, signed=False) == "-0.0035"

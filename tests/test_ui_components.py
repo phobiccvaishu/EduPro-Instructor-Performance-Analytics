@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from edupro.analytics.kpis import KPIResult, format_slope
+from edupro.analytics.kpis import KPIResult
+from edupro.formatting import format_slope
 from edupro.ui.components import (
     evidence_badge,
     kpi_tile,
