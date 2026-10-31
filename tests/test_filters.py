@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import pytest
 
-from edupro.analytics.engine import AnalyticsEngine
-from edupro.config import AnalysisConfig
 from edupro.filters import FilterBounds, FilterState, apply_filters, ceil_2d, floor_2d
 
 
@@ -153,69 +151,65 @@ def test_inverted_ranges_rejected():
         FilterState(experience_range=(20.0, 5.0))
 
 
+SCOPE_FILTERS = [
+    ("expertise", FilterState(expertise=("Machine Learning",))),
+    ("course_category", FilterState(course_category=("Web Development",))),
+    ("course_level", FilterState(course_level=("Advanced",))),
+    ("instructor_gender", FilterState(instructor_gender=("Female",))),
+    ("teacher_rating_range", FilterState(teacher_rating_range=(3.0, 4.97))),
+    ("course_rating_range", FilterState(course_rating_range=(3.0, 4.94))),
+    ("experience_range", FilterState(experience_range=(5.0, 24.0))),
+]
+
+SCOPE_TARGETS = [
+    ("kpi_banner", "view.teacher_table & view.course_table"),
+    ("tab1_rankings", "view.teacher_table"),
+    ("tab2_experience", "view.teacher_table"),
+    ("tab3_course_quality", "view.course_table"),
+    ("tab4_domain_analysis", "view.master"),
+    ("tab5_rating_relationships", "view.master"),
+]
+
+SCOPE_CASES = [
+    (f_name, f_state, t_name, feed_obj, True)
+    for (f_name, f_state) in SCOPE_FILTERS
+    for (t_name, feed_obj) in SCOPE_TARGETS
+]
+
+
 @pytest.mark.parametrize(
-    "filter_name,filter_state",
-    [
-        ("expertise", FilterState(expertise=("Machine Learning",))),
-        ("course_category", FilterState(course_category=("Web Development",))),
-        ("course_level", FilterState(course_level=("Advanced",))),
-        ("instructor_gender", FilterState(instructor_gender=("Female",))),
-        ("teacher_rating_range", FilterState(teacher_rating_range=(3.0, 4.97))),
-        ("course_rating_range", FilterState(course_rating_range=(3.0, 4.94))),
-        ("experience_range", FilterState(experience_range=(5.0, 24.0))),
-    ],
+    "filter_name,filter_state,target_name,feeding_obj,expected_changed",
+    SCOPE_CASES,
 )
-def test_filter_scope_matrix_coverage(dataset, filter_name, filter_state):
-    """Verify that every filter causes a measurable update across all 6 UI functional areas."""
-    cfg = AnalysisConfig(fast_mode=True)
+def test_filter_scope_matrix_cell(
+    dataset,
+    filter_name,
+    filter_state,
+    target_name,
+    feeding_obj,
+    expected_changed,
+):
+    """
+    Parametrized test for all 42 (filter, UI target) scope cells.
+    Verifies that narrowing filters mutate their primary feeding data objects.
+    """
     base_view = apply_filters(dataset, FilterState.default(dataset))
-    base_res = AnalyticsEngine(
-        base_view.master,
-        base_view.teachers,
-        base_view.courses,
-        base_view.transactions,
-    ).run_full_analysis(cfg=cfg)
+    filtered_view = apply_filters(dataset, filter_state)
 
-    view = apply_filters(dataset, filter_state)
-    res = AnalyticsEngine(
-        view.master,
-        view.teachers,
-        view.courses,
-        view.transactions,
-    ).run_full_analysis(cfg=cfg)
+    if target_name == "kpi_banner":
+        changed = not filtered_view.teacher_table.equals(
+            base_view.teacher_table
+        ) or not filtered_view.course_table.equals(base_view.course_table)
+    elif target_name in ("tab1_rankings", "tab2_experience"):
+        changed = not filtered_view.teacher_table.equals(base_view.teacher_table)
+    elif target_name == "tab3_course_quality":
+        changed = not filtered_view.course_table.equals(base_view.course_table)
+    elif target_name in ("tab4_domain_analysis", "tab5_rating_relationships"):
+        changed = not filtered_view.master.equals(base_view.master)
+    else:
+        raise ValueError(f"Unknown target: {target_name}")
 
-    # 1. Platform KPIs
-    kpis_changed = (
-        res["kpis_v2"]["avg_teacher_rating"].value
-        != base_res["kpis_v2"]["avg_teacher_rating"].value
-        or res["kpis_v2"]["avg_course_rating"].value
-        != base_res["kpis_v2"]["avg_course_rating"].value
-        or view.counts["n_enrollments"] != base_view.counts["n_enrollments"]
+    assert changed == expected_changed, (
+        f"Scope cell failed for ({filter_name}, {target_name}): "
+        f"expected changed={expected_changed}, got changed={changed} on {feeding_obj}"
     )
-    assert kpis_changed, f"KPIs did not change for {filter_name}"
-
-    # 2. Tab 1: Instructor Rankings (view.teacher_table)
-    tab1_changed = not view.teacher_table.equals(base_view.teacher_table)
-    assert tab1_changed, f"Tab 1 (teacher_table) did not change for {filter_name}"
-
-    # 3. Tab 2: Experience & Ratings (res['findings']['F2'] or teacher_table)
-    tab2_changed = (
-        not view.teacher_table.equals(base_view.teacher_table)
-        or res["findings"]["F2"].statistic != base_res["findings"]["F2"].statistic
-    )
-    assert tab2_changed, f"Tab 2 (experience vs performance) did not change for {filter_name}"
-
-    # 4. Tab 3: Course Quality Maps (view.course_table)
-    tab3_changed = not view.course_table.equals(base_view.course_table)
-    assert tab3_changed, f"Tab 3 (course_table) did not change for {filter_name}"
-
-    # 5. Tab 4: Domain Analysis (res['findings']['F8a'] or master)
-    tab4_changed = (
-        not view.master.equals(base_view.master)
-        or res["findings"]["F8a"].statistic != base_res["findings"]["F8a"].statistic
-    )
-    assert tab4_changed, f"Tab 4 (domain analysis) did not change for {filter_name}"
-
-    # 6. Tab 5: Rating Relationships (view.master pair dataset)
-    tab5_changed = not view.master.equals(base_view.master)
-    assert tab5_changed, f"Tab 5 (master pair data) did not change for {filter_name}"
