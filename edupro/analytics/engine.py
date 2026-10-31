@@ -597,6 +597,20 @@ class AnalyticsEngine:
                 ci_tc = (float(corr_res["ci_low"]), float(corr_res["ci_high"]))
                 verdict = _make_verdict(p_tc, ci_tc, len(tt), cfg.min_group_size, cfg.alpha)
 
+                # Teacher-course OLS slope b of weighted CourseRating on TeacherRating
+                x_tc = tt["TeacherRating"].to_numpy(dtype=float)
+                y_tc = tt["weighted_course_rating"].to_numpy(dtype=float)
+                X_tc = sm.add_constant(x_tc)
+                ols_tc = OLS(y_tc, X_tc).fit()
+                slope_tc = float(ols_tc.params.iloc[1]) if hasattr(ols_tc.params, "iloc") else float(ols_tc.params[1])
+                slope_tc_p = float(ols_tc.pvalues.iloc[1]) if hasattr(ols_tc.pvalues, "iloc") else float(ols_tc.pvalues[1])
+                ci_tc_df = ols_tc.conf_int()
+                ci_slope_tc = (
+                    (float(ci_tc_df.iloc[1, 0]), float(ci_tc_df.iloc[1, 1]))
+                    if hasattr(ci_tc_df, "iloc")
+                    else (float(ci_tc_df[1][0]), float(ci_tc_df[1][1]))
+                )
+
                 # Course slope unified to single function experience_course_slope
                 slope_res = experience_course_slope(tt, alpha=cfg.alpha)
                 slope_cr = slope_res["slope"]
@@ -645,6 +659,19 @@ class AnalyticsEngine:
                         "teacher_course_rating_corr": round(r_tc, 4)
                         if np.isfinite(r_tc)
                         else np.nan,
+                        "teacher_course_rating_corr_p": round(p_tc, 4) if np.isfinite(p_tc) else np.nan,
+                        "teacher_course_rating_corr_ci": (round(ci_tc[0], 4), round(ci_tc[1], 4))
+                        if np.isfinite(ci_tc[0])
+                        else (np.nan, np.nan),
+                        "teacher_course_rating_slope": round(slope_tc, 4)
+                        if np.isfinite(slope_tc)
+                        else np.nan,
+                        "teacher_course_rating_slope_p": round(slope_tc_p, 4)
+                        if np.isfinite(slope_tc_p)
+                        else np.nan,
+                        "teacher_course_rating_slope_ci": (round(ci_slope_tc[0], 4), round(ci_slope_tc[1], 4))
+                        if np.isfinite(ci_slope_tc[0])
+                        else (np.nan, np.nan),
                         "teacher_course_rating_p": round(p_tc, 4) if np.isfinite(p_tc) else np.nan,
                         "teacher_course_rating_ci": (round(ci_tc[0], 4), round(ci_tc[1], 4))
                         if np.isfinite(ci_tc[0])
@@ -671,9 +698,22 @@ class AnalyticsEngine:
         # 1. HC3 Robust OLS
         X_hc3 = sm.add_constant(x_base)
         m_hc3 = OLS(y_base, X_hc3).fit(cov_type="HC3")
-        slope_hc3 = float(m_hc3.params[1])
-        p_hc3 = float(m_hc3.pvalues[1])
-        ci_hc3 = (float(m_hc3.conf_int()[1][0]), float(m_hc3.conf_int()[1][1]))
+        slope_hc3 = (
+            float(m_hc3.params.iloc[1])
+            if hasattr(m_hc3.params, "iloc")
+            else float(m_hc3.params[1])
+        )
+        p_hc3 = (
+            float(m_hc3.pvalues.iloc[1])
+            if hasattr(m_hc3.pvalues, "iloc")
+            else float(m_hc3.pvalues[1])
+        )
+        ci_hc3_df = m_hc3.conf_int()
+        ci_hc3 = (
+            (float(ci_hc3_df.iloc[1, 0]), float(ci_hc3_df.iloc[1, 1]))
+            if hasattr(ci_hc3_df, "iloc")
+            else (float(ci_hc3_df[1][0]), float(ci_hc3_df[1][1]))
+        )
         verdict_hc3 = _make_verdict(p_hc3, ci_hc3, len(tt_base), 3, 0.05)
 
         rows.append(
@@ -688,9 +728,14 @@ class AnalyticsEngine:
                 "rating_consistency_index_status": rows[0]["rating_consistency_index_status"],
                 "experience_slope_course": rows[0]["experience_slope_course"],
                 "experience_slope_course_p": rows[0]["experience_slope_course_p"],
-                "teacher_course_rating_corr": round(slope_hc3, 4),
-                "teacher_course_rating_p": round(p_hc3, 4),
-                "teacher_course_rating_ci": (round(ci_hc3[0], 4), round(ci_hc3[1], 4)),
+                "teacher_course_rating_corr": rows[0]["teacher_course_rating_corr"],
+                "teacher_course_rating_corr_p": rows[0]["teacher_course_rating_corr_p"],
+                "teacher_course_rating_corr_ci": rows[0]["teacher_course_rating_corr_ci"],
+                "teacher_course_rating_slope": round(slope_hc3, 4),
+                "teacher_course_rating_slope_p": round(p_hc3, 4),
+                "teacher_course_rating_slope_ci": (round(ci_hc3[0], 4), round(ci_hc3[1], 4)),
+                "teacher_course_rating_p": rows[0]["teacher_course_rating_p"],
+                "teacher_course_rating_ci": rows[0]["teacher_course_rating_ci"],
                 "teacher_course_rating_verdict": verdict_hc3,
                 "conclusion_unchanged": "unchanged",
                 "conclusion_note": "HC3 heteroskedasticity-consistent standard errors confirm lack of rating relationship.",
@@ -718,6 +763,11 @@ class AnalyticsEngine:
                 "experience_slope_course": rows[0]["experience_slope_course"],
                 "experience_slope_course_p": rows[0]["experience_slope_course_p"],
                 "teacher_course_rating_corr": round(rho_s, 4),
+                "teacher_course_rating_corr_p": round(p_s, 4),
+                "teacher_course_rating_corr_ci": (round(ci_s[0], 4), round(ci_s[1], 4)),
+                "teacher_course_rating_slope": np.nan,
+                "teacher_course_rating_slope_p": np.nan,
+                "teacher_course_rating_slope_ci": (np.nan, np.nan),
                 "teacher_course_rating_p": round(p_s, 4),
                 "teacher_course_rating_ci": (round(ci_s[0], 4), round(ci_s[1], 4)),
                 "teacher_course_rating_verdict": verdict_s,
