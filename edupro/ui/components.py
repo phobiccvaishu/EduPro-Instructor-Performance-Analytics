@@ -13,6 +13,7 @@ from typing import Any
 import streamlit as st
 
 from edupro.analytics.kpis import KPIResult
+from edupro.formatting import fmt_half_up
 from edupro.ui.theme import (
     COLOR_BORDER,
     COLOR_TEXT_MUTED,
@@ -85,11 +86,23 @@ def kpi_tile(
     95% confidence interval, sample size, and caveat tooltip.
     """
     val = kpi.value
+    decimals = 3
+    add_sign = False
+    spec_clean = format_spec.lstrip("+")
+    if format_spec.startswith("+"):
+        add_sign = True
+    if spec_clean.endswith("f"):
+        try:
+            decimals = int(spec_clean.replace(".", "").replace("f", ""))
+        except Exception:
+            decimals = 3
+
     if math.isnan(val):
         display_val = "Insufficient data"
     else:
-        formatted = f"{val:{format_spec}}{unit_suffix}"
-        display_val = formatted
+        display_val = fmt_half_up(
+            val, decimals=decimals, suffix=unit_suffix, add_sign=add_sign
+        )
 
     # Sub-caption with 95% CI and n
     if subcaption is not None:
@@ -97,7 +110,9 @@ def kpi_tile(
     else:
         ci_str = ""
         if not (math.isnan(kpi.ci_low) or math.isnan(kpi.ci_high)):
-            ci_str = f" [95% CI: {kpi.ci_low:{format_spec}}, {kpi.ci_high:{format_spec}}]"
+            str_low = fmt_half_up(kpi.ci_low, decimals=decimals)
+            str_high = fmt_half_up(kpi.ci_high, decimals=decimals)
+            ci_str = f" [95% CI: {str_low}, {str_high}]"
         meta_subtext = f"n = {kpi.n}{ci_str}"
 
     # Build comprehensive help tooltip from definition and caveat

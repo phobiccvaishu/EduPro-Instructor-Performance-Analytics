@@ -51,6 +51,9 @@ class KPIResult:
     extra: dict[str, Any] = field(default_factory=dict)
 
 
+from edupro.formatting import fmt_half_up
+
+
 def format_slope(val: float | None, signed: bool = True) -> str:
     """
     Unified formatter for regression slopes:
@@ -59,10 +62,8 @@ def format_slope(val: float | None, signed: bool = True) -> str:
     """
     if val is None or not np.isfinite(val):
         return "N/A"
-    sign_str = "+" if signed else ""
-    if abs(val) < 0.01:
-        return f"{val:{sign_str}.4f}"
-    return f"{val:{sign_str}.3f}"
+    decimals = 4 if abs(val) < 0.01 else 3
+    return fmt_half_up(val, decimals=decimals, add_sign=signed)
 
 
 class KPIEngine:
