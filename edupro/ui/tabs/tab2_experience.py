@@ -89,8 +89,8 @@ def render(
                 "HC3 heteroskedasticity-consistent standard errors; piecewise regression with permutation test.",
             ),
             (
-                "Decoupling Evidence",
-                "Experience predicts instructor score positively while showing negligible translation into course content ratings.",
+                "Experience-Rating Dynamics",
+                "Years of experience associate positively with instructor evaluations, whereas course quality ratings show no statistically reliable association.",
             ),
             (
                 "Small Sample Policy",
@@ -134,7 +134,7 @@ def render(
     m2.metric(
         "Experience -> Course Quality",
         cr_metric_val,
-        help=f"Pearson r = {r_cr:.3f}, {fmt_p_value(p_cr)} (Not statistically significant)",
+        help=f"Pearson r = {r_cr:.3f}, p = {fmt_p_value(p_cr)} (verdict: {f3_obj.verdict if f3_obj else 'N/A'})",
     )
     m3.metric(
         "Inflection Breakpoint",
@@ -144,7 +144,7 @@ def render(
     m4.metric(
         "Senior vs Early Career Lift",
         diff_metric_val,
-        help="Mean rating difference between instructors with 6+ years experience vs 0-5 years.",
+        help="Mean rating contrast between senior instructors (6+ years) and early-career instructors (0-5 years).",
     )
 
     st.markdown("---")

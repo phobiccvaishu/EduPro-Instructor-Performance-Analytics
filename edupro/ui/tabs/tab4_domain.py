@@ -81,7 +81,7 @@ def render(
             ),
             (
                 "Conflation Warning",
-                "Machine Learning instructor scores remain distinct from course evaluations; differences evaluate separate analytical dimensions rather than instructor deficit.",
+                "Machine Learning instructor scores remain distinct from course evaluations; the data cannot separate instructor and content effects.",
             ),
         ],
     )

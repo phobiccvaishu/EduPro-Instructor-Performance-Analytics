@@ -100,9 +100,7 @@ def kpi_tile(
     if math.isnan(val):
         display_val = "Insufficient data"
     else:
-        display_val = fmt_half_up(
-            val, decimals=decimals, suffix=unit_suffix, add_sign=add_sign
-        )
+        display_val = fmt_half_up(val, decimals=decimals, suffix=unit_suffix, add_sign=add_sign)
 
     # Sub-caption with 95% CI and n
     if subcaption is not None:

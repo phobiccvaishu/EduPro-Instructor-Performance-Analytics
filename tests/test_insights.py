@@ -104,7 +104,9 @@ def test_f1_insight_baseline_and_governance(baseline_findings):
     assert "3.13" in ins.headline or "3.12" in ins.headline
     assert ins.verdict == "Descriptive"
     assert ins.n == 60
-    assert "No statistically reliable departure from normality was detected" in ins.evidence_sentence
+    assert (
+        "No statistically reliable departure from normality was detected" in ins.evidence_sentence
+    )
 
 
 def test_f2_insight_baseline_and_governance(baseline_findings):
@@ -199,7 +201,10 @@ def test_f10_f11_insight_enrollment_concentration(baseline_findings):
     assert_governance_rules(ins)
     assert "68.2%" in ins.headline
     assert "Account for" in ins.headline
-    assert "6,182 of the High tier's 6,820 enrollments belong to 4 instructors" in ins.evidence_sentence
+    assert (
+        "6,182 of the High tier's 6,820 enrollments belong to 4 instructors"
+        in ins.evidence_sentence
+    )
     assert "rating >= 4.0" in ins.evidence_sentence
 
 

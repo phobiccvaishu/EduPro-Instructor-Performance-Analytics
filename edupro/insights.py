@@ -25,7 +25,7 @@ from dataclasses import dataclass
 
 from edupro.analytics.inference import Finding
 from edupro.config import settings
-from edupro.formatting import fmt_ci, fmt_half_up, fmt_int, fmt_p_value, fmt_percent
+from edupro.formatting import fmt_ci, fmt_half_up, fmt_p_value, fmt_percent
 
 
 @dataclass(frozen=True)
@@ -261,13 +261,15 @@ def generate_f4b_insight(f4b: Finding, is_fast_mode: bool = False) -> GeneratedI
             stat_summary=f"n = {f4b.n}",
         )
 
-    bp = f4b.extra.get("breakpoint_search", {})
+    bp = f4b.extra.get("breakpoint_search") or f4b.extra
     knot = bp.get("best_breakpoint", f4b.statistic)
     s_pre = bp.get("slope_before", float("nan"))
     s_post = bp.get("slope_after", float("nan"))
     p_perm = bp.get("permutation_p", f4b.p_value)
 
-    headline = f"Experience Breakpoint Analysis Identifies Candidate Knot at {fmt_half_up(knot, 0)} Years"
+    headline = (
+        f"Experience Breakpoint Analysis Identifies Candidate Knot at {fmt_half_up(knot, 0)} Years"
+    )
     evidence_sentence = (
         f"Piecewise regression evaluates a potential structural change at {fmt_half_up(knot, 0)} years "
         f"(pre-slope: {fmt_half_up(s_pre, 3, add_sign=True)} vs post-slope: {fmt_half_up(s_post, 3, add_sign=True)}, "
@@ -294,7 +296,7 @@ def generate_f4_insight(f4a: Finding, f4b: Finding, is_fast_mode: bool = False) 
     if ins_a.verdict == "Insufficient data":
         return ins_a
 
-    bp = f4b.extra.get("breakpoint_search", {})
+    bp = f4b.extra.get("breakpoint_search") or f4b.extra
     knot = bp.get("best_breakpoint", f4b.statistic)
     p_perm = bp.get("permutation_p", f4b.p_value)
 
@@ -526,7 +528,9 @@ def generate_f10_f11_insight(
     high_share = base_k.get("high_share", 0.682)
     thresh = settings.tier_high_threshold
 
-    headline = f"High-Tier Instructors Account for {fmt_percent(high_share, 1)} of Platform Enrollments"
+    headline = (
+        f"High-Tier Instructors Account for {fmt_percent(high_share, 1)} of Platform Enrollments"
+    )
     evidence_sentence = (
         f"Instructors in the High tier (rating >= {fmt_half_up(thresh, 1)}) account for {fmt_percent(high_share, 1)} of all enrollments "
         f"(6,820 of 10,000 enrollments across n = {f11.n} instructors). "
