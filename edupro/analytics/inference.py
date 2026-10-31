@@ -1182,17 +1182,9 @@ def eval_f8c_gender_by_level_cells(
             else np.nan
         )
 
-        cluster_agg = grp.groupby("TeacherID").apply(
-            lambda g: pd.Series(
-                {
-                    "e": float(g["EnrollmentCount"].sum()),
-                    "s": float((g["EnrollmentCount"] * g["CourseRating"]).sum()),
-                }
-            ),
-            include_groups=False,
-        )
-        c_e = cluster_agg["e"].to_numpy()
-        c_s = cluster_agg["s"].to_numpy()
+        grp_s = grp["EnrollmentCount"] * grp["CourseRating"]
+        c_e = grp.groupby("TeacherID")["EnrollmentCount"].sum().to_numpy(dtype=float)
+        c_s = grp_s.groupby(grp["TeacherID"]).sum().to_numpy(dtype=float)
         n_clusters = len(c_e)
 
         if n_clusters >= 2 and cfg.effective_n_boot > 0:
@@ -1565,20 +1557,25 @@ def eval_f11_concentration_and_confounding(
     X_reg = pd.concat(cols, axis=1)
     y_reg = df_reg["log_enr"]
 
-    if len(df_reg) > X_reg.shape[1]:
-        ols_domain = OLS(y_reg, X_reg).fit(cov_type="HC3")
-        tr_coef = float(ols_domain.params["TeacherRating"])
-        tr_se = float(ols_domain.bse["TeacherRating"])
-        tr_p = float(ols_domain.pvalues["TeacherRating"])
-        tr_conf = ols_domain.conf_int(alpha=cfg.alpha).loc["TeacherRating"]
-        tr_ci = (float(tr_conf[0]), float(tr_conf[1]))
+    if len(df_reg) > X_reg.shape[1] + 1 and df_reg["TeacherRating"].nunique() >= 2:
+        try:
+            ols_domain = OLS(y_reg, X_reg).fit(cov_type="HC3")
+            tr_coef = float(ols_domain.params["TeacherRating"])
+            tr_se = float(ols_domain.bse["TeacherRating"])
+            tr_p = float(ols_domain.pvalues["TeacherRating"])
+            tr_conf = ols_domain.conf_int(alpha=cfg.alpha).loc["TeacherRating"]
+            tr_ci = (float(tr_conf[0]), float(tr_conf[1]))
 
-        X_no_tr = X_reg.drop(columns=["TeacherRating"])
-        r2_no_tr = OLS(y_reg, X_no_tr).fit().rsquared
-        r2_full = ols_domain.rsquared
-        partial_r2 = (
-            max(0.0, float((r2_full - r2_no_tr) / (1.0 - r2_no_tr))) if r2_no_tr < 1.0 else 0.0
-        )
+            X_no_tr = X_reg.drop(columns=["TeacherRating"])
+            r2_no_tr = OLS(y_reg, X_no_tr).fit().rsquared
+            r2_full = ols_domain.rsquared
+            partial_r2 = (
+                max(0.0, float((r2_full - r2_no_tr) / (1.0 - r2_no_tr))) if r2_no_tr < 1.0 else 0.0
+            )
+        except Exception:
+            tr_coef, tr_se, tr_p = np.nan, np.nan, np.nan
+            tr_ci = (np.nan, np.nan)
+            r2_full, partial_r2 = np.nan, np.nan
     else:
         tr_coef, tr_se, tr_p = np.nan, np.nan, np.nan
         tr_ci = (np.nan, np.nan)

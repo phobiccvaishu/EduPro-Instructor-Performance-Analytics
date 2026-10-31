@@ -242,9 +242,25 @@ class KPIEngine:
 
         ratings = t_df["TeacherRating"].dropna().to_numpy(dtype=float)
         n = len(ratings)
-        val = float(np.mean(ratings))
+        if n == 0:
+            return KPIResult(
+                name="avg_teacher_rating",
+                value=np.nan,
+                ci_low=np.nan,
+                ci_high=np.nan,
+                n=0,
+                unit="stars (1–5)",
+                evidence="None",
+                definition="Arithmetic mean of TeacherRating across unique instructors.",
+                caveat="Evaluation reflects student perception of instructor directly.",
+                extra={"std": np.nan, "median": np.nan},
+            )
+
+        val = float(ratings[0]) if n == 1 else float(np.mean(ratings))
         ci = bootstrap_ci(ratings, np.mean, n_boot=cfg.effective_n_boot, seed=cfg.seed)
         ev = evidence_label(0.0001, n, ci, "moderate", alpha=cfg.alpha)
+        std_val = float(np.std(ratings, ddof=1)) if n >= 2 else np.nan
+        med_val = float(np.median(ratings)) if n > 0 else np.nan
 
         return KPIResult(
             name="avg_teacher_rating",
@@ -256,7 +272,7 @@ class KPIEngine:
             evidence=ev,
             definition="Arithmetic mean of TeacherRating across unique instructors.",
             caveat="Evaluation reflects student perception of instructor directly.",
-            extra={"std": float(np.std(ratings, ddof=1)), "median": float(np.median(ratings))},
+            extra={"std": std_val, "median": med_val},
         )
 
     def avg_course_rating_v2(
@@ -274,9 +290,25 @@ class KPIEngine:
 
         ratings = c_df["CourseRating"].dropna().to_numpy(dtype=float)
         n = len(ratings)
-        val = float(np.mean(ratings))
+        if n == 0:
+            return KPIResult(
+                name="avg_course_rating",
+                value=np.nan,
+                ci_low=np.nan,
+                ci_high=np.nan,
+                n=0,
+                unit="stars (1–5)",
+                evidence="None",
+                definition="Arithmetic mean of CourseRating across unique course catalog titles.",
+                caveat="Independent of enrollment volumes; reflects catalog baseline quality.",
+                extra={"std": np.nan, "median": np.nan},
+            )
+
+        val = float(ratings[0]) if n == 1 else float(np.mean(ratings))
         ci = bootstrap_ci(ratings, np.mean, n_boot=cfg.effective_n_boot, seed=cfg.seed)
         ev = evidence_label(0.0001, n, ci, "moderate", alpha=cfg.alpha)
+        std_val = float(np.std(ratings, ddof=1)) if n >= 2 else np.nan
+        med_val = float(np.median(ratings)) if n > 0 else np.nan
 
         return KPIResult(
             name="avg_course_rating",
@@ -288,7 +320,7 @@ class KPIEngine:
             evidence=ev,
             definition="Arithmetic mean of CourseRating across unique course catalog titles.",
             caveat="Independent of enrollment volumes; reflects catalog baseline quality.",
-            extra={"std": float(np.std(ratings, ddof=1)), "median": float(np.median(ratings))},
+            extra={"std": std_val, "median": med_val},
         )
 
     def rating_consistency_index_v2(
@@ -330,6 +362,45 @@ class KPIEngine:
 
         cr_orig = m["CourseRating"].to_numpy(dtype=float)
 
+        c_orig_list = []
+        w_orig_list = []
+        for idxs, nw, tot_e in teacher_groups:
+            vals = cr_orig[idxs]
+            m_val = np.sum(nw * vals)
+            if m_val <= 0:
+                continue
+            v_val = np.sum(nw * ((vals - m_val) ** 2))
+            cv = np.sqrt(v_val) / m_val
+            c_orig_list.append(max(0.0, 1.0 - cv))
+            w_orig_list.append(tot_e)
+
+        if not c_orig_list or np.sum(w_orig_list) <= 0:
+            return KPIResult(
+                "rating_consistency_index", 0.0, np.nan, np.nan, 0, "index (0–1)", "None", "", ""
+            )
+
+        c_orig_arr = np.array(c_orig_list, dtype=float)
+        w_orig_arr = np.array(w_orig_list, dtype=float)
+        obs_platform_cons = float(np.sum(c_orig_arr * w_orig_arr) / np.sum(w_orig_arr))
+        n_inst = len(c_orig_arr)
+
+        # Bootstrap CI for weighted platform consistency
+        rng = np.random.default_rng(cfg.seed)
+        if cfg.effective_n_boot > 0 and n_inst >= 2:
+            b_matrix = rng.choice(n_inst, size=(cfg.effective_n_boot, n_inst), replace=True)
+            c_sampled = c_orig_arr[b_matrix]
+            w_sampled = w_orig_arr[b_matrix]
+            tot_w = np.sum(w_sampled, axis=1)
+            valid = tot_w > 0
+            boot_vals = np.sum(c_sampled[valid] * w_sampled[valid], axis=1) / tot_w[valid]
+            q_low, q_high = (cfg.alpha / 2.0) * 100.0, (1.0 - cfg.alpha / 2.0) * 100.0
+            ci = (
+                float(np.percentile(boot_vals, q_low)) if len(boot_vals) > 0 else np.nan,
+                float(np.percentile(boot_vals, q_high)) if len(boot_vals) > 0 else np.nan,
+            )
+        else:
+            ci = (np.nan, np.nan)
+
         # Function to compute weighted platform consistency from a ratings array
         def calc_platform_cons(cr_arr: np.ndarray) -> float:
             c_list = []
@@ -346,37 +417,6 @@ class KPIEngine:
             if not c_list or np.sum(w_list) <= 0:
                 return 0.0
             return float(np.sum(np.array(c_list) * np.array(w_list)) / np.sum(w_list))
-
-        obs_platform_cons = calc_platform_cons(cr_orig)
-        n_inst = len(teacher_groups)
-
-        # Bootstrap CI for weighted platform consistency
-        rng = np.random.default_rng(cfg.seed)
-        boot_vals = []
-        tg_indices = np.arange(n_inst)
-        for _ in range(cfg.effective_n_boot):
-            b_sample = rng.choice(tg_indices, size=n_inst, replace=True)
-            c_boot = []
-            w_boot = []
-            for b_idx in b_sample:
-                idxs, nw, tot_e = teacher_groups[b_idx]
-                vals = cr_orig[idxs]
-                m_val = np.sum(nw * vals)
-                if m_val <= 0:
-                    continue
-                v_val = np.sum(nw * ((vals - m_val) ** 2))
-                cv = np.sqrt(v_val) / m_val
-                c_boot.append(max(0.0, 1.0 - cv))
-                w_boot.append(tot_e)
-            tot_w = np.sum(w_boot)
-            if tot_w > 0:
-                boot_vals.append(float(np.sum(np.array(c_boot) * np.array(w_boot)) / tot_w))
-
-        q_low, q_high = (cfg.alpha / 2.0) * 100.0, (1.0 - cfg.alpha / 2.0) * 100.0
-        ci = (
-            float(np.percentile(boot_vals, q_low)) if len(boot_vals) > 0 else np.nan,
-            float(np.percentile(boot_vals, q_high)) if len(boot_vals) > 0 else np.nan,
-        )
 
         # Permutation benchmark: shuffle CourseRating across master rows
         n_perm = cfg.effective_n_perm
@@ -654,8 +694,11 @@ class KPIEngine:
         # Per-tier mean enrollments
         tier_means = {}
         for t_label in settings.tier_labels:
-            m_val = float(tt.loc[tt["InstructorTier"] == t_label, "total_enrollments"].mean())
-            tier_means[t_label] = round(m_val, 2)
+            t_rows = tt.loc[tt["InstructorTier"] == t_label, "total_enrollments"]
+            if len(t_rows) > 0:
+                tier_means[t_label] = round(float(t_rows.mean()), 2)
+            else:
+                tier_means[t_label] = np.nan
 
         ev = evidence_label(0.001, n_total, ci, "moderate", alpha=cfg.alpha)
         if robustness == "Fragile":
