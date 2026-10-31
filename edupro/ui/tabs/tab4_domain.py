@@ -81,7 +81,7 @@ def render(
             ),
             (
                 "Conflation Warning",
-                "Machine Learning instructors exhibit high scores (4.23), yet ML courses average 2.66; this reflects content design rather than instructor deficit.",
+                "Machine Learning instructor scores remain distinct from course evaluations; differences evaluate separate analytical dimensions rather than instructor deficit.",
             ),
         ],
     )

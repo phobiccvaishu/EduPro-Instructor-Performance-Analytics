@@ -13,6 +13,7 @@ import pandas as pd
 import streamlit as st
 
 from edupro.analytics.kpis import format_slope
+from edupro.formatting import fmt_p_value
 from edupro.insights import generate_f2_insight, generate_f3_insight, generate_f4_insight
 from edupro.ui.charts import build_scatter_with_trendline
 from edupro.ui.components import (
@@ -89,7 +90,7 @@ def render(
             ),
             (
                 "Decoupling Evidence",
-                "Experience predicts instructor score (+0.120/yr) but does not translate into course content ratings (-0.0035/yr).",
+                "Experience predicts instructor score positively while showing negligible translation into course content ratings.",
             ),
             (
                 "Small Sample Policy",
@@ -105,20 +106,16 @@ def render(
     f4a_obj = findings.get("F4a")
     f4b_obj = findings.get("F4b")
 
-    slope_tr = f2_obj.extra.get("ols_slope", 0.120) if f2_obj else 0.120
-    r_tr = f2_obj.statistic if f2_obj else 0.598
-    p_tr = f2_obj.p_value if f2_obj else 0.0001
+    slope_tr = f2_obj.extra.get("ols_slope", float("nan")) if f2_obj else float("nan")
+    r_tr = f2_obj.statistic if f2_obj else float("nan")
+    p_tr = f2_obj.p_value if f2_obj else float("nan")
 
-    slope_cr = (
-        f3_obj.extra.get("pair_level_cluster_robust", {}).get("slope", -0.0035)
-        if f3_obj
-        else -0.0035
-    )
-    r_cr = f3_obj.statistic if f3_obj else -0.057
-    p_cr = f3_obj.p_value if f3_obj else 0.666
+    slope_cr = f3_obj.extra.get("ols_slope", float("nan")) if f3_obj else float("nan")
+    r_cr = f3_obj.statistic if f3_obj else float("nan")
+    p_cr = f3_obj.p_value if f3_obj else float("nan")
 
-    bp_val = f4b_obj.statistic if f4b_obj else 8.0
-    diff_val = f4a_obj.statistic if f4a_obj else 1.36
+    bp_val = f4b_obj.statistic if f4b_obj else float("nan")
+    diff_val = f4a_obj.statistic if f4a_obj else float("nan")
 
     tr_metric_val = (
         f"{format_slope(slope_tr, signed=True)}/yr" if not math.isnan(slope_tr) else "N/A"
@@ -132,12 +129,12 @@ def render(
     m1.metric(
         "Experience -> Teacher Rating",
         tr_metric_val,
-        help=f"Pearson r = {r_tr:.3f}, p < 0.001" if p_tr < 0.001 else f"p = {p_tr:.3f}",
+        help=f"Pearson r = {r_tr:.3f}, {fmt_p_value(p_tr)}",
     )
     m2.metric(
         "Experience -> Course Quality",
         cr_metric_val,
-        help=f"Pearson r = {r_cr:.3f}, p = {p_cr:.3f} (Not statistically significant)",
+        help=f"Pearson r = {r_cr:.3f}, {fmt_p_value(p_cr)} (Not statistically significant)",
     )
     m3.metric(
         "Inflection Breakpoint",
