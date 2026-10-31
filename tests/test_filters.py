@@ -157,7 +157,7 @@ SCOPE_FILTERS = [
     ("course_level", FilterState(course_level=("Advanced",))),
     ("instructor_gender", FilterState(instructor_gender=("Female",))),
     ("teacher_rating_range", FilterState(teacher_rating_range=(3.0, 4.97))),
-    ("course_rating_range", FilterState(course_rating_range=(3.0, 4.94))),
+    ("course_rating_range", FilterState(course_rating_range=(4.79, 4.94))),
     ("experience_range", FilterState(experience_range=(5.0, 24.0))),
 ]
 
@@ -248,12 +248,13 @@ def test_specific_plotted_aggregates_scope(dataset):
             .sort_values(by="YearsOfExperience")
             .reset_index(drop=True)
         )
-        if f_name in ("course_level", "course_rating_range"):
-            # Honest no-effect: all 60 instructors remain active
+        if f_name == "course_level":
+            # Honest no-effect: all 60 instructors remain active across all 3 levels
             assert v_t2_scatter.equals(base_t2_scatter), (
                 f"Expected Tab 2 intrinsic scatter to be unchanged under {f_name}"
             )
         else:
+            # Under course_rating_range top 3 courses (4.79-4.94), only 37 instructors remain active (23 drop)
             assert not v_t2_scatter.equals(base_t2_scatter), (
                 f"Expected Tab 2 intrinsic scatter to change under {f_name}"
             )

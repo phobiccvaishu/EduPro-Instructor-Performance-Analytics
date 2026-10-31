@@ -106,9 +106,9 @@ When zooming from DataFrame container mutation to the exact numerical and visual
 - **Tab 1: Rankings Table**: Total enrollments mutate across all 7 filters.
 - **Tab 2: Experience vs Instructor Rating Scatter Plot**:
   - The scatter points (`YearsOfExperience` vs `TeacherRating`) and their OLS regression slope represent intrinsic instructor demographics.
-  - Under `course_level` (e.g., `Advanced`) and `course_rating_range` (e.g., $\ge 3.0$), **all 60 instructors teach at least one matching course**. Therefore, every instructor remains active, and their demographic attributes (`YearsOfExperience`, `TeacherRating`) are 100% identical to the unfiltered baseline.
-  - Hence, the Tab 2 instructor scatter plot exhibits an honest **Unchanged (no-effect)** status under course level and course rating filters.
-  - In contrast, the secondary plot in Tab 2 (`YearsOfExperience` vs `weighted_course_rating`) changes across all course filters because course ratings are re-weighted across the surviving transactions.
+  - Under `course_level` (e.g., `Advanced`), **all 60 instructors teach at least one matching course**. Every instructor remains active ($N_{active} = 60$), and their demographic attributes (`YearsOfExperience`, `TeacherRating`) are 100% identical to the unfiltered baseline. Hence, the Tab 2 instructor demographic scatter plot exhibits an honest **Unchanged (no-effect)** status under course level.
+  - In contrast, under `course_rating_range`: while a broad filter (e.g., $\ge 3.0$) encompasses all instructors, narrowing to top-rated courses (e.g. $[4.79, 4.94]$, the top 3 courses CR00035, CR00038, CR00017) leaves only **37 active instructors** (23 drop with zero active enrollments). The Tab 2 instructor scatter plot therefore truncates from 60 points to 37 points, marking this cell as **Changed**.
+  - The secondary plot in Tab 2 (`YearsOfExperience` vs `weighted_course_rating`) changes across all course filters because course ratings are re-weighted across surviving transactions.
 - **Tab 3: Quality Heatmap**: The category $\times$ level mean CourseRating matrix mutates across all 7 filters.
 - **Tab 4: Domain Performance**: Domain-level mean CourseRating mutates across all 7 filters.
 - **Tab 5: Relationship Scatter**: Master transaction pairs (`TeacherRating` vs `CourseRating`) mutate across all 7 filters.
