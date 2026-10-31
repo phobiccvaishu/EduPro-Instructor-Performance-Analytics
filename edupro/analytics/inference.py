@@ -1820,7 +1820,7 @@ def eval_f13_expertise_vs_course_quality_and_ml_gap(
         f"Machine Learning Quality Contrast: ML category catalog average CourseRating (A, n=5) is {cat_ml_cr_catalog:.3f} (held fixed) "
         f"vs enrollment-weighted CourseRating of courses taught by ML instructors (B, n={n_ml} teachers) of {inst_ml_cr_weighted:.3f} "
         f"(unweighted {inst_ml_cr_unweighted:.3f}). Point estimate (B - A) is +{gap_weighted:.3f}; "
-        f"teacher-cluster bootstrap distribution mean is {boot_mean:.3f} (offset due to small-cluster ratio estimation bias, n={n_ml}); "
+        f"teacher-cluster bootstrap distribution mean is {boot_mean:.3f} (offset from small-cluster ratio estimation bias, n={n_ml}); "
         f"95% cluster CI is [{ci_gap[0]:.3f}, {ci_gap[1]:.3f}] and bootstrap two-sided p = {p_boot:.3f} >= 0.05 (verdict: {verdict}). "
         f"ML instructors' TeacherRating averages {ml_teacher_rating_mean:.3f} (reported separately). "
         f"Mean own-domain teaching share across platform is {own_mean * 100:.1f}%."

@@ -2335,7 +2335,7 @@
       "effect_label": "moderate",
       "evidence": "None",
       "verdict": "not supported",
-      "notes": "Machine Learning Quality Contrast: ML category catalog average CourseRating (A, n=5) is 2.658 (held fixed) vs enrollment-weighted CourseRating of courses taught by ML instructors (B, n=5 teachers) of 3.055 (unweighted 2.946). Point estimate (B - A) is +0.397; teacher-cluster bootstrap distribution mean is 0.289 (offset due to small-cluster ratio estimation bias, n=5); 95% cluster CI is [-0.066, 0.418] and bootstrap two-sided p = 0.163 >= 0.05 (verdict: not supported). ML instructors' TeacherRating averages 4.234 (reported separately). Mean own-domain teaching share across platform is 74.0%.",
+      "notes": "Machine Learning Quality Contrast: ML category catalog average CourseRating (A, n=5) is 2.658 (held fixed) vs enrollment-weighted CourseRating of courses taught by ML instructors (B, n=5 teachers) of 3.055 (unweighted 2.946). Point estimate (B - A) is +0.397; teacher-cluster bootstrap distribution mean is 0.289 (offset from small-cluster ratio estimation bias, n=5); 95% cluster CI is [-0.066, 0.418] and bootstrap two-sided p = 0.163 >= 0.05 (verdict: not supported). ML instructors' TeacherRating averages 4.234 (reported separately). Mean own-domain teaching share across platform is 74.0%.",
       "extra": {
         "ml_quality_gap": {
           "A_ml_category_catalog_cr": 2.6580000000000004,
