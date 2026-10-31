@@ -1,5 +1,7 @@
 # Statistical Methodology & Inferential Framework
 
+*Created: Saturday, October 31, 2026 at 18:46:41 +0530 (commit `d08e502`).*
+
 This document outlines the formal statistical formulations, effect size definitions, hypothesis test corrections, and resampling procedures implemented across the EduPro Analytics platform.
 
 ---
@@ -79,3 +81,18 @@ Every inferential finding (F1–F13) evaluates to one of the canonical verdicts 
 - **Not Supported**: $p \ge \alpha$ or 95% confidence interval crosses zero.
 - **Inconclusive**: $p < \alpha$ but confidence interval is uninformative or bounds span practically zero.
 - **Descriptive**: Observational summaries without formal null-hypothesis testing.
+
+---
+
+## 5. Superstar Enrollment Concentration
+
+Platform enrollment distribution exhibits acute right-tail concentration:
+- **Single Instructor Dominance**: One instructor (`TC00042`, Yolanda Levine) accounts for 3,061 of 10,000 platform enrollments (exact share: 30.61%), and 3,061 of 3,303 enrollments among instructors with Machine Learning expertise (exact share: 92.67%).
+- **Top 2 Concentration**: Together, the top 2 instructors (`TC00042` and `TC00040`) account for 6,086 of 10,000 platform enrollments (60.86%).
+- **High-Tier Concentration**: The 11 instructors in the High tier ($\ge 4.0$) capture 6,820 of 10,000 platform enrollments (68.20%). Within this tier, 6,182 enrollments (90.65% of the tier's enrollments) are concentrated in just 4 instructors:
+  1. `TC00042`: 3,061 enrollments (Machine Learning, Female, rating 4.97)
+  2. `TC00040`: 3,025 enrollments (Cybersecurity, Male, rating 4.58)
+  3. `TC00007`: 49 enrollments (Machine Learning, Female, rating 4.36)
+  4. `TC00004`: 47 enrollments (Machine Learning, Female, rating 4.39)
+  Total: 6,182 of 6,820 High-tier enrollments.
+- **Analytical Governance**: Any aggregate enrollment-weighted metric without cluster adjustments reflects the specific portfolio of these superstar instructors rather than platform-wide instructor efficacy. Consequently, platform analyses enforce leave-top-$k$-out robustness testing and cluster-robust standard errors.
