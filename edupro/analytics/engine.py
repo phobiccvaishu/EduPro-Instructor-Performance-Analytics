@@ -602,8 +602,16 @@ class AnalyticsEngine:
                 y_tc = tt["weighted_course_rating"].to_numpy(dtype=float)
                 X_tc = sm.add_constant(x_tc)
                 ols_tc = OLS(y_tc, X_tc).fit()
-                slope_tc = float(ols_tc.params.iloc[1]) if hasattr(ols_tc.params, "iloc") else float(ols_tc.params[1])
-                slope_tc_p = float(ols_tc.pvalues.iloc[1]) if hasattr(ols_tc.pvalues, "iloc") else float(ols_tc.pvalues[1])
+                slope_tc = (
+                    float(ols_tc.params.iloc[1])
+                    if hasattr(ols_tc.params, "iloc")
+                    else float(ols_tc.params[1])
+                )
+                slope_tc_p = (
+                    float(ols_tc.pvalues.iloc[1])
+                    if hasattr(ols_tc.pvalues, "iloc")
+                    else float(ols_tc.pvalues[1])
+                )
                 ci_tc_df = ols_tc.conf_int()
                 ci_slope_tc = (
                     (float(ci_tc_df.iloc[1, 0]), float(ci_tc_df.iloc[1, 1]))
@@ -659,7 +667,9 @@ class AnalyticsEngine:
                         "teacher_course_rating_corr": round(r_tc, 4)
                         if np.isfinite(r_tc)
                         else np.nan,
-                        "teacher_course_rating_corr_p": round(p_tc, 4) if np.isfinite(p_tc) else np.nan,
+                        "teacher_course_rating_corr_p": round(p_tc, 4)
+                        if np.isfinite(p_tc)
+                        else np.nan,
                         "teacher_course_rating_corr_ci": (round(ci_tc[0], 4), round(ci_tc[1], 4))
                         if np.isfinite(ci_tc[0])
                         else (np.nan, np.nan),
@@ -669,7 +679,10 @@ class AnalyticsEngine:
                         "teacher_course_rating_slope_p": round(slope_tc_p, 4)
                         if np.isfinite(slope_tc_p)
                         else np.nan,
-                        "teacher_course_rating_slope_ci": (round(ci_slope_tc[0], 4), round(ci_slope_tc[1], 4))
+                        "teacher_course_rating_slope_ci": (
+                            round(ci_slope_tc[0], 4),
+                            round(ci_slope_tc[1], 4),
+                        )
                         if np.isfinite(ci_slope_tc[0])
                         else (np.nan, np.nan),
                         "teacher_course_rating_p": round(p_tc, 4) if np.isfinite(p_tc) else np.nan,
@@ -699,9 +712,7 @@ class AnalyticsEngine:
         X_hc3 = sm.add_constant(x_base)
         m_hc3 = OLS(y_base, X_hc3).fit(cov_type="HC3")
         slope_hc3 = (
-            float(m_hc3.params.iloc[1])
-            if hasattr(m_hc3.params, "iloc")
-            else float(m_hc3.params[1])
+            float(m_hc3.params.iloc[1]) if hasattr(m_hc3.params, "iloc") else float(m_hc3.params[1])
         )
         p_hc3 = (
             float(m_hc3.pvalues.iloc[1])

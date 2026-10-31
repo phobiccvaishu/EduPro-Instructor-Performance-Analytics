@@ -52,6 +52,7 @@ def teacher_table(
         df["n_courses"] = 0
         df["weighted_course_rating"] = np.nan
         df["own_domain_share"] = 0.0
+        df["own_domain_course_share"] = 0.0
         df["InstructorTier"] = df["TeacherRating"].apply(settings.get_tier)
         return df
 
@@ -75,6 +76,8 @@ def teacher_table(
         own_domain_mask = grp["CourseCategory"] == grp["Expertise"]
         own_enr = float(grp.loc[own_domain_mask, "EnrollmentCount"].sum())
         own_domain_sh = float(own_enr / tot_enr) if tot_enr > 0 else 0.0
+        own_c = int(grp.loc[own_domain_mask, "CourseID"].nunique())
+        own_domain_course_sh = float(own_c / n_c) if n_c > 0 else 0.0
 
         records.append(
             {
@@ -84,6 +87,7 @@ def teacher_table(
                 "n_courses": n_c,
                 "weighted_course_rating": wt_course_rating,
                 "own_domain_share": own_domain_sh,
+                "own_domain_course_share": own_domain_course_sh,
             }
         )
 
@@ -95,6 +99,7 @@ def teacher_table(
     merged["enrollment_share"] = merged["enrollment_share"].fillna(0.0).astype(float)
     merged["n_courses"] = merged["n_courses"].fillna(0).astype(int)
     merged["own_domain_share"] = merged["own_domain_share"].fillna(0.0).astype(float)
+    merged["own_domain_course_share"] = merged["own_domain_course_share"].fillna(0.0).astype(float)
     # weighted_course_rating stays np.nan if no courses
 
     # InstructorTier

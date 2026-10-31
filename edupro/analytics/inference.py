@@ -1133,12 +1133,12 @@ def eval_f8b_course_quality_by_gender(
             tt_clean.sort_values(by="total_enrollments", ascending=False).head(3)["TeacherID"]
         )
         tt_sub3 = tt_clean[~tt_clean["TeacherID"].isin(top3_ids)]
-        f_sub3 = tt_sub3.loc[
-            tt_sub3["Gender"] == "Female", "weighted_course_rating"
-        ].to_numpy(dtype=float)
-        m_sub3 = tt_sub3.loc[
-            tt_sub3["Gender"] == "Male", "weighted_course_rating"
-        ].to_numpy(dtype=float)
+        f_sub3 = tt_sub3.loc[tt_sub3["Gender"] == "Female", "weighted_course_rating"].to_numpy(
+            dtype=float
+        )
+        m_sub3 = tt_sub3.loc[tt_sub3["Gender"] == "Male", "weighted_course_rating"].to_numpy(
+            dtype=float
+        )
         mw_sub3 = mann_whitney_with_effect(f_sub3, m_sub3)
     else:
         mw_sub3 = {"status": "skipped"}
@@ -1862,6 +1862,16 @@ def eval_f13_expertise_vs_course_quality_and_ml_gap(
 
     own_mean = float(teacher_df["own_domain_share"].mean())
     own_med = float(teacher_df["own_domain_share"].median())
+    own_course_mean = (
+        float(teacher_df["own_domain_course_share"].mean())
+        if "own_domain_course_share" in teacher_df.columns
+        else np.nan
+    )
+    own_course_med = (
+        float(teacher_df["own_domain_course_share"].median())
+        if "own_domain_course_share" in teacher_df.columns
+        else np.nan
+    )
 
     # Platform-wide expertise-category alignment (verified 41.1%)
     align_matches = master[master["Expertise"] == master["CourseCategory"]]
@@ -1895,8 +1905,9 @@ def eval_f13_expertise_vs_course_quality_and_ml_gap(
         f"95% cluster CI is [{ci_gap[0]:.3f}, {ci_gap[1]:.3f}] and bootstrap two-sided p = {p_boot:.3f} >= 0.05 (verdict: {verdict}). "
         f"ML instructors' TeacherRating averages {ml_teacher_rating_mean:.3f} (reported separately). "
         f"Platform-wide expertise-category enrollment alignment is {platform_alignment_share * 100:.1f}% "
-        f"({int(platform_alignment_enr):,}/{int(tot_master_enr):,} enrollments), "
-        f"while mean instructor own-domain portfolio share is {own_mean * 100:.1f}%.{caveat_cluster}"
+        f"({int(platform_alignment_enr):,}/{int(tot_master_enr):,} enrollments). "
+        f"Unweighted mean instructor own-domain enrollment share is {own_mean * 100:.1f}% (median {own_med * 100:.1f}%), "
+        f"while unweighted mean instructor own-domain distinct course share is {own_course_mean * 100:.1f}% (median {own_course_med * 100:.1f}%).{caveat_cluster}"
     )
 
     return Finding(
@@ -1931,6 +1942,10 @@ def eval_f13_expertise_vs_course_quality_and_ml_gap(
             "ml_instructors_teacher_rating_mean": ml_teacher_rating_mean,
             "own_domain_share_mean": own_mean,
             "own_domain_share_median": own_med,
+            "own_domain_enrollment_share_mean": own_mean,
+            "own_domain_enrollment_share_median": own_med,
+            "own_domain_course_share_mean": own_course_mean,
+            "own_domain_course_share_median": own_course_med,
             "ml_curriculum_gap": {
                 "ml_teacher_rating_mean": ml_teacher_rating_mean,
                 "ml_course_rating_catalog_mean": cat_ml_cr_catalog,
