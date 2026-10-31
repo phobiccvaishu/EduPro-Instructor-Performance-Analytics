@@ -15,6 +15,7 @@ from typing import Any
 
 import streamlit as st
 
+from edupro.analytics.kpis import format_slope
 from edupro.data.pipeline import load_all
 from edupro.filters import FilterState, apply_filters
 from edupro.logging_setup import get_logger
@@ -162,21 +163,14 @@ ci_tr = exp_kpi.extra.get("slope_on_teacher_rating_ci", (exp_kpi.ci_low, exp_kpi
 ci_cr = exp_kpi.extra.get("slope_on_course_rating_ci", (float("nan"), float("nan")))
 
 
-def _fmt_slope_val(val: float) -> str:
-    if math.isnan(val):
-        return "N/A"
-    s = f"{val:+.3f}"
-    return f"{val:+.4f}" if s in ("+0.000", "-0.000") else s
-
-
 def _fmt_ci_range(ci: tuple[float, float]) -> str:
     if math.isnan(ci[0]) or math.isnan(ci[1]):
         return "N/A"
-    return f"[{_fmt_slope_val(ci[0])}, {_fmt_slope_val(ci[1])}]"
+    return f"[{format_slope(ci[0], signed=True)}, {format_slope(ci[1], signed=True)}]"
 
 
 delta_cr_str = (
-    f"{_fmt_slope_val(slope_cr)} per year on courses (95% CI: {_fmt_ci_range(ci_cr)})"
+    f"{format_slope(slope_cr, signed=True)} per year on courses (95% CI: {_fmt_ci_range(ci_cr)})"
     if not math.isnan(slope_cr)
     else None
 )

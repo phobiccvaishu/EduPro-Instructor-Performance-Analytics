@@ -51,6 +51,20 @@ class KPIResult:
     extra: dict[str, Any] = field(default_factory=dict)
 
 
+def format_slope(val: float | None, signed: bool = True) -> str:
+    """
+    Unified formatter for regression slopes:
+    Uses 4 decimals when |slope| < 0.01, and 3 decimals otherwise.
+    Returns 'N/A' for None or non-finite inputs.
+    """
+    if val is None or not np.isfinite(val):
+        return "N/A"
+    sign_str = "+" if signed else ""
+    if abs(val) < 0.01:
+        return f"{val:{sign_str}.4f}"
+    return f"{val:{sign_str}.3f}"
+
+
 class KPIEngine:
     """
     Compute platform KPIs at both global and filtered cohort levels.

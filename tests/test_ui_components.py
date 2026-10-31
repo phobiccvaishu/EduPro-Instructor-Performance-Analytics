@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from edupro.analytics.kpis import KPIResult
+from edupro.analytics.kpis import KPIResult, format_slope
 from edupro.ui.components import (
     evidence_badge,
     kpi_tile,
@@ -126,14 +126,10 @@ def test_experience_slope_tile_display_precision_and_ci():
         },
     )
 
-    def _fmt_slope_val(val: float) -> str:
-        s = f"{val:+.3f}"
-        return f"{val:+.4f}" if s in ("+0.000", "-0.000") else s
-
     def _fmt_ci_range(ci: tuple[float, float]) -> str:
-        return f"[{_fmt_slope_val(ci[0])}, {_fmt_slope_val(ci[1])}]"
+        return f"[{format_slope(ci[0], signed=True)}, {format_slope(ci[1], signed=True)}]"
 
-    delta_str = f"{_fmt_slope_val(slope_cr)} per year on courses (95% CI: {_fmt_ci_range(ci_cr)})"
+    delta_str = f"{format_slope(slope_cr, signed=True)} per year on courses (95% CI: {_fmt_ci_range(ci_cr)})"
     subcaption_str = (
         f"n = {kpi_exp.n} | TR CI: {_fmt_ci_range(ci_tr)} | CR CI: {_fmt_ci_range(ci_cr)}"
     )
@@ -151,7 +147,7 @@ def test_experience_slope_tile_display_precision_and_ci():
     assert mock_col.metric.called
     kwargs = mock_col.metric.call_args[1]
     assert kwargs["value"] == "+0.120 per year"
-    assert "-0.004 per year" in kwargs["delta"]
+    assert "-0.0035 per year" in kwargs["delta"]
     assert "[-0.020, +0.013]" in kwargs["delta"]
 
     assert mock_col.caption.called
@@ -159,3 +155,15 @@ def test_experience_slope_tile_display_precision_and_ci():
     assert "TR CI: [+0.078, +0.163]" in caption_text
     assert "CR CI: [-0.020, +0.013]" in caption_text
     assert "n = 60" in caption_text
+
+
+def test_format_slope_unified():
+    """Item 21: Unified slope formatter tests."""
+    assert format_slope(-0.003509) == "-0.0035"
+    assert format_slope(0.120444) == "+0.120"
+    assert format_slope(0.0001) == "+0.0001"
+    assert format_slope(-0.0591) == "-0.059"
+    assert format_slope(None) == "N/A"
+    assert format_slope(float("nan")) == "N/A"
+    assert format_slope(0.120, signed=False) == "0.120"
+    assert format_slope(-0.0035, signed=False) == "-0.0035"

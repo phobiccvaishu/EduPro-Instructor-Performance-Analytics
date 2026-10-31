@@ -12,6 +12,7 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
+from edupro.analytics.kpis import format_slope
 from edupro.insights import generate_f2_insight, generate_f3_insight, generate_f4_insight
 from edupro.ui.charts import build_scatter_with_trendline
 from edupro.ui.components import (
@@ -119,8 +120,12 @@ def render(
     bp_val = f4b_obj.statistic if f4b_obj else 8.0
     diff_val = f4a_obj.statistic if f4a_obj else 1.36
 
-    tr_metric_val = f"+{slope_tr:.3f}/yr" if not math.isnan(slope_tr) else "N/A"
-    cr_metric_val = f"{slope_cr:+.4f}/yr" if not math.isnan(slope_cr) else "N/A"
+    tr_metric_val = (
+        f"{format_slope(slope_tr, signed=True)}/yr" if not math.isnan(slope_tr) else "N/A"
+    )
+    cr_metric_val = (
+        f"{format_slope(slope_cr, signed=True)}/yr" if not math.isnan(slope_cr) else "N/A"
+    )
     bp_metric_val = f"{bp_val:.0f} Years" if not math.isnan(bp_val) else "N/A"
     diff_metric_val = f"+{diff_val:.2f} Pts" if not math.isnan(diff_val) else "N/A"
 
