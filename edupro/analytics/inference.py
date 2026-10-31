@@ -1006,12 +1006,23 @@ def eval_f8a_teacher_rating_by_gender(
     f_mean, f_med = float(np.mean(females_tr)), float(np.median(females_tr))
     m_mean, m_med = float(np.mean(males_tr)), float(np.median(males_tr))
 
-    ev = evidence_label(adj_p, n, None, mw["effect"], alpha=cfg.alpha)
-    verdict = _make_verdict(adj_p, None, n, cfg.min_group_size, cfg.alpha)
+    rng = np.random.default_rng(cfg.seed)
+    if cfg.effective_n_boot > 0:
+        b_f = rng.choice(females_tr, size=(cfg.effective_n_boot, n1), replace=True).mean(axis=1)
+        b_m = rng.choice(males_tr, size=(cfg.effective_n_boot, n2), replace=True).mean(axis=1)
+        b_diff = b_f - b_m
+        q_l, q_h = (cfg.alpha / 2.0) * 100.0, (1.0 - cfg.alpha / 2.0) * 100.0
+        ci_diff = (float(np.percentile(b_diff, q_l)), float(np.percentile(b_diff, q_h)))
+    else:
+        ci_diff = (np.nan, np.nan)
+
+    ev = evidence_label(adj_p, n, ci_diff, mw["effect"], alpha=cfg.alpha)
+    verdict = _make_verdict(adj_p, ci_diff, n, cfg.min_group_size, cfg.alpha)
 
     notes = (
         f"Females (n={n1}, mean={f_mean:.3f}, median={f_med:.3f}) vs "
         f"Males (n={n2}, mean={m_mean:.3f}, median={m_med:.3f}): "
+        f"Mean difference (Female - Male) = {f_mean - m_mean:+.3f} [95% CI: {ci_diff[0]:.3f}, {ci_diff[1]:.3f}], "
         f"Mann-Whitney U = {mw['statistic']}, raw p = {raw_p:.4f}, Holm-adj p = {adj_p:.4f} "
         f"(rank-biserial = {mw.get('rank_biserial', np.nan):.3f}, {mw['effect']} effect)."
     )
@@ -1023,20 +1034,23 @@ def eval_f8a_teacher_rating_by_gender(
         unit_of_analysis="teacher",
         n=n,
         statistic=mw["statistic"],
-        ci_low=np.nan,
-        ci_high=np.nan,
+        ci_low=ci_diff[0],
+        ci_high=ci_diff[1],
         p_value=adj_p,
         effect_label=mw["effect"],
         evidence=ev,
         verdict=verdict,
         notes=notes,
         extra={
+            "source_column": "TeacherRating",
             "n_female": n1,
             "mean_female": f_mean,
             "median_female": f_med,
             "n_male": n2,
             "mean_male": m_mean,
             "median_male": m_med,
+            "diff_mean_female_minus_male": f_mean - m_mean,
+            "ci_diff_mean": ci_diff,
             "raw_p_value": raw_p,
             "holm_adj_p": adj_p,
             "rank_biserial": mw.get("rank_biserial", np.nan),
@@ -1109,6 +1123,22 @@ def eval_f8b_course_quality_by_gender(
         f"Difference may reflect which courses each gender teaches; the data cannot establish a cause."
     )
 
+    # Leave-top-3 instructors out by total_enrollments sensitivity check
+    if "total_enrollments" in tt_clean.columns and len(tt_clean) > 3:
+        top3_ids = set(
+            tt_clean.sort_values(by="total_enrollments", ascending=False).head(3)["TeacherID"]
+        )
+        tt_sub3 = tt_clean[~tt_clean["TeacherID"].isin(top3_ids)]
+        f_sub3 = tt_sub3.loc[
+            tt_sub3["Gender"] == "Female", "weighted_course_rating"
+        ].to_numpy(dtype=float)
+        m_sub3 = tt_sub3.loc[
+            tt_sub3["Gender"] == "Male", "weighted_course_rating"
+        ].to_numpy(dtype=float)
+        mw_sub3 = mann_whitney_with_effect(f_sub3, m_sub3)
+    else:
+        mw_sub3 = {"status": "skipped"}
+
     return Finding(
         id="F8b",
         question="Do course quality ratings differ between courses taught by female vs male instructors?",
@@ -1124,6 +1154,7 @@ def eval_f8b_course_quality_by_gender(
         verdict=verdict,
         notes=notes,
         extra={
+            "source_column": "weighted_course_rating",
             "higher_gender": higher_gender,
             "n_female": n1,
             "mean_female": f_mean,
@@ -1137,6 +1168,7 @@ def eval_f8b_course_quality_by_gender(
             "holm_adj_p": adj_p,
             "rank_biserial": mw.get("rank_biserial", np.nan),
             "mann_whitney": mw,
+            "leave_top_3_sensitivity": mw_sub3,
         },
     )
 

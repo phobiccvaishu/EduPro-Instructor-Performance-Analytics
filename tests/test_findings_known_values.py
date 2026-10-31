@@ -71,16 +71,28 @@ def test_f8_known_gender_family(dataset):
     """F8a (TeacherRating), F8b (CourseQuality), F8c (Gender x Level table)."""
     tt = teacher_table(dataset.teachers, dataset.master)
     f8a = eval_f8a_teacher_rating_by_gender(dataset.teachers, default_analysis_config)
+    assert f8a.extra["source_column"] == "TeacherRating"
+    assert f8a.extra["mean_female"] == pytest.approx(3.231, abs=1e-3)
+    assert f8a.extra["mean_male"] == pytest.approx(3.038, abs=1e-3)
     assert f8a.statistic == pytest.approx(551.0, abs=1.0)
     assert f8a.extra["raw_p_value"] == pytest.approx(0.119, abs=0.01)
     assert f8a.verdict == "not supported"
 
     f8b = eval_f8b_course_quality_by_gender(tt, default_analysis_config)
+    assert f8b.extra["source_column"] == "weighted_course_rating"
+    assert f8b.extra["mean_female"] == pytest.approx(3.053, abs=1e-3)
+    assert f8b.extra["mean_male"] == pytest.approx(3.247, abs=1e-3)
     assert f8b.statistic == pytest.approx(254.0, abs=1.0)
     assert f8b.extra["raw_p_value"] == pytest.approx(0.0045, abs=1e-3)
     assert f8b.p_value == pytest.approx(0.0091, abs=1e-3)
     assert f8b.verdict == "supported"
     assert "due to" not in f8b.notes.lower()
+
+    # Leave-top-3 check
+    sens3 = f8b.extra["leave_top_3_sensitivity"]
+    assert sens3["status"] == "ok"
+    assert sens3["p_value"] < 0.05
+    assert sens3["effect"] == "moderate"
 
     f8c = eval_f8c_gender_by_level_cells(dataset.teachers, dataset.master, default_analysis_config)
     assert f8c.verdict == "descriptive"
