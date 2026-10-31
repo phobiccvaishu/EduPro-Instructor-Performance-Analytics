@@ -46,12 +46,13 @@ def golden_baseline() -> dict[str, Any]:
 @pytest.fixture(autouse=True, scope="session")
 def patch_windows_asyncio_for_streamlit_apptest():
     """
-    On Windows in restricted sandboxes, socket.socketpair() hangs because loopback TCP is blocked.
-    Patch asyncio.new_event_loop so Streamlit LocalScriptRunner can instantiate without hanging.
+    Opt-in mock for restricted Windows sandbox environments where socket.socketpair() hangs.
+    Activated only when EDUPRO_TEST_SANDBOX=1 is explicitly set in the environment.
     """
+    import os
     import sys
 
-    if sys.platform == "win32":
+    if sys.platform == "win32" and os.environ.get("EDUPRO_TEST_SANDBOX") == "1":
         import asyncio
         from unittest.mock import MagicMock
 
