@@ -94,3 +94,68 @@ def test_empty_state_and_headers_run_without_exception():
     # These functions call st.*, mock streamlit if necessary or run in AppTest context
     badge = evidence_badge("Supported")
     assert "Supported" in badge
+
+
+def test_experience_slope_tile_display_precision_and_ci():
+    """
+    Verify Experience Impact tile displays both slopes with 3 decimals
+    (or 4 if 3 shows 0.000) and includes dual 95% CIs.
+    """
+    mock_col = MagicMock()
+
+    slope_tr = 0.12044429767181916
+    ci_tr = (0.07801798966237938, 0.16287060568125894)
+    slope_cr = -0.003509530061306776
+    ci_cr = (-0.019697936008496474, 0.012678875885882922)
+
+    kpi_exp = KPIResult(
+        name="experience_impact",
+        value=slope_tr,
+        ci_low=ci_tr[0],
+        ci_high=ci_tr[1],
+        n=60,
+        unit="points/year",
+        evidence="Strong",
+        definition="Annual rating increase per year of instructor teaching experience.",
+        caveat="Experience strongly predicts teacher rating but has negligible translation into course quality.",
+        extra={
+            "slope_on_teacher_rating": slope_tr,
+            "slope_on_teacher_rating_ci": ci_tr,
+            "slope_on_course_rating": slope_cr,
+            "slope_on_course_rating_ci": ci_cr,
+        },
+    )
+
+    def _fmt_slope_val(val: float) -> str:
+        s = f"{val:+.3f}"
+        return f"{val:+.4f}" if s in ("+0.000", "-0.000") else s
+
+    def _fmt_ci_range(ci: tuple[float, float]) -> str:
+        return f"[{_fmt_slope_val(ci[0])}, {_fmt_slope_val(ci[1])}]"
+
+    delta_str = f"{_fmt_slope_val(slope_cr)} per year on courses (95% CI: {_fmt_ci_range(ci_cr)})"
+    subcaption_str = (
+        f"n = {kpi_exp.n} | TR CI: {_fmt_ci_range(ci_tr)} | CR CI: {_fmt_ci_range(ci_cr)}"
+    )
+
+    kpi_tile(
+        mock_col,
+        label="Experience Impact",
+        kpi=kpi_exp,
+        delta=delta_str,
+        format_spec="+.3f",
+        unit_suffix=" per year",
+        subcaption=subcaption_str,
+    )
+
+    assert mock_col.metric.called
+    kwargs = mock_col.metric.call_args[1]
+    assert kwargs["value"] == "+0.120 per year"
+    assert "-0.004 per year" in kwargs["delta"]
+    assert "[-0.020, +0.013]" in kwargs["delta"]
+
+    assert mock_col.caption.called
+    caption_text = mock_col.caption.call_args[0][0]
+    assert "TR CI: [+0.078, +0.163]" in caption_text
+    assert "CR CI: [-0.020, +0.013]" in caption_text
+    assert "n = 60" in caption_text

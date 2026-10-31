@@ -158,7 +158,29 @@ kpi_tile(
 exp_kpi = kpis_v2["experience_impact"]
 slope_tr = exp_kpi.extra.get("slope_on_teacher_rating", float("nan"))
 slope_cr = exp_kpi.extra.get("slope_on_course_rating", float("nan"))
-delta_cr_str = f"{slope_cr:+.3f}/yr on courses" if not math.isnan(slope_cr) else None
+ci_tr = exp_kpi.extra.get("slope_on_teacher_rating_ci", (exp_kpi.ci_low, exp_kpi.ci_high))
+ci_cr = exp_kpi.extra.get("slope_on_course_rating_ci", (float("nan"), float("nan")))
+
+
+def _fmt_slope_val(val: float) -> str:
+    if math.isnan(val):
+        return "N/A"
+    s = f"{val:+.3f}"
+    return f"{val:+.4f}" if s in ("+0.000", "-0.000") else s
+
+
+def _fmt_ci_range(ci: tuple[float, float]) -> str:
+    if math.isnan(ci[0]) or math.isnan(ci[1]):
+        return "N/A"
+    return f"[{_fmt_slope_val(ci[0])}, {_fmt_slope_val(ci[1])}]"
+
+
+delta_cr_str = (
+    f"{_fmt_slope_val(slope_cr)} per year on courses (95% CI: {_fmt_ci_range(ci_cr)})"
+    if not math.isnan(slope_cr)
+    else None
+)
+subcaption_str = f"n = {exp_kpi.n} | TR CI: {_fmt_ci_range(ci_tr)} | CR CI: {_fmt_ci_range(ci_cr)}"
 
 kpi_tile(
     k4,
@@ -167,7 +189,8 @@ kpi_tile(
     delta=delta_cr_str,
     delta_color="off",
     format_spec="+.3f",
-    unit_suffix="/yr",
+    unit_suffix=" per year",
+    subcaption=subcaption_str,
 )
 
 kpi_tile(

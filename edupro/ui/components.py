@@ -78,6 +78,7 @@ def kpi_tile(
     delta_color: str = "off",
     format_spec: str = ".3f",
     unit_suffix: str = "",
+    subcaption: str | None = None,
 ) -> None:
     """
     Render a single executive KPI tile displaying the point estimate,
@@ -91,10 +92,13 @@ def kpi_tile(
         display_val = formatted
 
     # Sub-caption with 95% CI and n
-    ci_str = ""
-    if not (math.isnan(kpi.ci_low) or math.isnan(kpi.ci_high)):
-        ci_str = f" [95% CI: {kpi.ci_low:{format_spec}}, {kpi.ci_high:{format_spec}}]"
-    meta_subtext = f"n = {kpi.n}{ci_str}"
+    if subcaption is not None:
+        meta_subtext = subcaption
+    else:
+        ci_str = ""
+        if not (math.isnan(kpi.ci_low) or math.isnan(kpi.ci_high)):
+            ci_str = f" [95% CI: {kpi.ci_low:{format_spec}}, {kpi.ci_high:{format_spec}}]"
+        meta_subtext = f"n = {kpi.n}{ci_str}"
 
     # Build comprehensive help tooltip from definition and caveat
     help_parts = []
