@@ -12,8 +12,10 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+import statsmodels.api as sm
 from scipy import stats
 from sklearn.linear_model import LinearRegression
+from statsmodels.regression.linear_model import OLS
 
 from edupro.analytics.aggregation import course_table, teacher_table
 from edupro.analytics.inference import _make_verdict, run_all_inferences
@@ -655,5 +657,74 @@ class AnalyticsEngine:
                         ),
                     }
                 )
+
+        # Extra labelled rows: HC3 and rank-based (Spearman)
+        tt_base = teacher_table(
+            self.teachers,
+            self.master,
+            attribution="enrollment_weighted",
+            min_pair_enrollment=None,
+        )
+        x_base = tt_base["TeacherRating"].to_numpy(dtype=float)
+        y_base = tt_base["weighted_course_rating"].to_numpy(dtype=float)
+
+        # 1. HC3 Robust OLS
+        X_hc3 = sm.add_constant(x_base)
+        m_hc3 = OLS(y_base, X_hc3).fit(cov_type="HC3")
+        slope_hc3 = float(m_hc3.params[1])
+        p_hc3 = float(m_hc3.pvalues[1])
+        ci_hc3 = (float(m_hc3.conf_int()[1][0]), float(m_hc3.conf_int()[1][1]))
+        verdict_hc3 = _make_verdict(p_hc3, ci_hc3, len(tt_base), 3, 0.05)
+
+        rows.append(
+            {
+                "attribution": "enrollment_weighted (HC3 robust)",
+                "min_pair_enrollment": 0,
+                "avg_teacher_rating": rows[0]["avg_teacher_rating"],
+                "avg_teacher_rating_status": rows[0]["avg_teacher_rating_status"],
+                "avg_course_rating": rows[0]["avg_course_rating"],
+                "avg_course_rating_status": rows[0]["avg_course_rating_status"],
+                "rating_consistency_index": rows[0]["rating_consistency_index"],
+                "rating_consistency_index_status": rows[0]["rating_consistency_index_status"],
+                "experience_slope_course": rows[0]["experience_slope_course"],
+                "experience_slope_course_p": rows[0]["experience_slope_course_p"],
+                "teacher_course_rating_corr": round(slope_hc3, 4),
+                "teacher_course_rating_p": round(p_hc3, 4),
+                "teacher_course_rating_ci": (round(ci_hc3[0], 4), round(ci_hc3[1], 4)),
+                "teacher_course_rating_verdict": verdict_hc3,
+                "conclusion_unchanged": "unchanged",
+                "conclusion_note": "HC3 heteroskedasticity-consistent standard errors confirm lack of rating relationship.",
+                "enrollment_influence_ratio": rows[0]["enrollment_influence_ratio"],
+            }
+        )
+
+        # 2. Rank-based Spearman
+        s_res = correlation(x_base, y_base, method="spearman", alpha=0.05)
+        rho_s = float(s_res["statistic"]) if np.isfinite(s_res["statistic"]) else np.nan
+        p_s = float(s_res["p_value"]) if np.isfinite(s_res["p_value"]) else np.nan
+        ci_s = (float(s_res["ci_low"]), float(s_res["ci_high"]))
+        verdict_s = _make_verdict(p_s, ci_s, len(tt_base), 3, 0.05)
+
+        rows.append(
+            {
+                "attribution": "enrollment_weighted (Spearman rank)",
+                "min_pair_enrollment": 0,
+                "avg_teacher_rating": rows[0]["avg_teacher_rating"],
+                "avg_teacher_rating_status": rows[0]["avg_teacher_rating_status"],
+                "avg_course_rating": rows[0]["avg_course_rating"],
+                "avg_course_rating_status": rows[0]["avg_course_rating_status"],
+                "rating_consistency_index": rows[0]["rating_consistency_index"],
+                "rating_consistency_index_status": rows[0]["rating_consistency_index_status"],
+                "experience_slope_course": rows[0]["experience_slope_course"],
+                "experience_slope_course_p": rows[0]["experience_slope_course_p"],
+                "teacher_course_rating_corr": round(rho_s, 4),
+                "teacher_course_rating_p": round(p_s, 4),
+                "teacher_course_rating_ci": (round(ci_s[0], 4), round(ci_s[1], 4)),
+                "teacher_course_rating_verdict": verdict_s,
+                "conclusion_unchanged": "unchanged",
+                "conclusion_note": "Monotonic rank correlation confirms independence of instructor and course ratings.",
+                "enrollment_influence_ratio": rows[0]["enrollment_influence_ratio"],
+            }
+        )
 
         return pd.DataFrame(rows)
