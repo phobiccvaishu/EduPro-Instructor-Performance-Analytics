@@ -7,7 +7,7 @@
     "fast_mode": false,
     "attribution": "enrollment_weighted",
     "min_pair_enrollment": null,
-    "execution_time_seconds": 3.079,
+    "execution_time_seconds": 6.742,
     "version": "2.0"
   },
   "kpis_v2": {
@@ -331,6 +331,15 @@
           "ci_high": 0.19992352110212872,
           "effect": "negligible"
         },
+        "teacher_slope": {
+          "slope": -0.003509530061306776,
+          "se": 0.008087258104808131,
+          "p_value": 0.6659289690316396,
+          "ci_low": -0.019697936008496474,
+          "ci_high": 0.012678875885882922,
+          "n": 60.0
+        },
+        "ols_slope": -0.003509530061306776,
         "pair_level_naive": {
           "status": "ok",
           "method": "pearson",
@@ -2358,7 +2367,7 @@
       "effect_label": "moderate",
       "evidence": "None",
       "verdict": "not supported",
-      "notes": "Machine Learning Quality Contrast: ML category catalog average CourseRating (A, n=5) is 2.658 (held fixed) vs enrollment-weighted CourseRating of courses taught by ML instructors (B, n=5 teachers) of 3.055 (unweighted 2.946). Point estimate (B - A) is +0.397; teacher-cluster bootstrap distribution mean is 0.289 (offset from small-cluster ratio estimation bias, n=5); 95% cluster CI is [-0.066, 0.418] and bootstrap two-sided p = 0.163 >= 0.05 (verdict: not supported). ML instructors' TeacherRating averages 4.234 (reported separately). Platform-wide expertise-category enrollment alignment is 41.1% (4,111/10,000 enrollments), while mean instructor own-domain portfolio share is 74.0%. Caveat: With n=5 teacher clusters (< 8), percentile bootstrap estimates are fragile and subject to cluster-concentration bias.",
+      "notes": "Machine Learning Quality Contrast: ML category catalog average CourseRating (A, n=5) is 2.658 (held fixed) vs enrollment-weighted CourseRating of courses taught by ML instructors (B, n=5 teachers) of 3.055 (unweighted 2.946). Point estimate (B - A) is +0.397; teacher-cluster bootstrap distribution mean is 0.289 (offset from small-cluster ratio estimation bias, n=5); 95% cluster CI is [-0.066, 0.418] and bootstrap two-sided p = 0.163 >= 0.05 (verdict: not supported). ML instructors' TeacherRating averages 4.234 (reported separately). Platform-wide expertise-category enrollment alignment is 41.1% (4,111/10,000 enrollments). Unweighted mean instructor own-domain enrollment share is 74.0% (median 77.2%), while unweighted mean instructor own-domain distinct course share is 39.3% (median 33.3%). Caveat: With n=5 teacher clusters (< 8), percentile bootstrap estimates are fragile and subject to cluster-concentration bias.",
       "extra": {
         "ml_quality_gap": {
           "A_ml_category_catalog_cr": 2.6580000000000004,
@@ -2406,6 +2415,10 @@
         "ml_instructors_teacher_rating_mean": 4.234,
         "own_domain_share_mean": 0.7395751256534215,
         "own_domain_share_median": 0.7721897335932424,
+        "own_domain_enrollment_share_mean": 0.7395751256534215,
+        "own_domain_enrollment_share_median": 0.7721897335932424,
+        "own_domain_course_share_mean": 0.39319682589225924,
+        "own_domain_course_share_median": 0.3333333333333333,
         "ml_curriculum_gap": {
           "ml_teacher_rating_mean": 4.234,
           "ml_course_rating_catalog_mean": 2.6580000000000004,
@@ -2630,6 +2643,7 @@
         "n_courses": 15,
         "weighted_course_rating": 2.8536111111111113,
         "own_domain_share": 0.6666666666666666,
+        "own_domain_course_share": 0.3333333333333333,
         "InstructorTier": "Mid (3.0\u20133.9)"
       },
       {
@@ -2645,6 +2659,7 @@
         "n_courses": 9,
         "weighted_course_rating": 3.708823529411765,
         "own_domain_share": 0.9117647058823529,
+        "own_domain_course_share": 0.5555555555555556,
         "InstructorTier": "High (\u22654.0)"
       },
       {
@@ -2660,6 +2675,7 @@
         "n_courses": 15,
         "weighted_course_rating": 3.1076271186440674,
         "own_domain_share": 0.7288135593220338,
+        "own_domain_course_share": 0.3333333333333333,
         "InstructorTier": "Low (<3.0)"
       },
       {
@@ -2675,6 +2691,7 @@
         "n_courses": 8,
         "weighted_course_rating": 2.5493617021276593,
         "own_domain_share": 0.8723404255319149,
+        "own_domain_course_share": 0.625,
         "InstructorTier": "High (\u22654.0)"
       },
       {
@@ -2690,6 +2707,7 @@
         "n_courses": 18,
         "weighted_course_rating": 2.7897872340425534,
         "own_domain_share": 0.6382978723404256,
+        "own_domain_course_share": 0.2777777777777778,
         "InstructorTier": "Mid (3.0\u20133.9)"
       }
     ],
