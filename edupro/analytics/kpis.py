@@ -714,7 +714,27 @@ class KPIEngine:
             else:
                 tier_means[t_label] = np.nan
 
-        ev = evidence_label(0.001, n_total, ci, "moderate", alpha=cfg.alpha)
+        # Mann-Whitney U test (High vs Rest total enrollments)
+        high_enrs = tt.loc[high_mask, "total_enrollments"].dropna().to_numpy(dtype=float)
+        rest_enrs = tt.loc[~high_mask, "total_enrollments"].dropna().to_numpy(dtype=float)
+        if len(high_enrs) > 0 and len(rest_enrs) > 0:
+            mw_res = stats.mannwhitneyu(high_enrs, rest_enrs, alternative="two-sided")
+            mw_u = float(mw_res.statistic)
+            mw_p = float(mw_res.pvalue)
+        else:
+            mw_u = np.nan
+            mw_p = np.nan
+
+        # Bootstrap p-value for H0: Ratio <= 1.0
+        if len(boot_ratios) > 0:
+            boot_arr = np.array(boot_ratios)
+            p_boot = float(np.mean(boot_arr <= 1.0))
+            if p_boot == 0.0:
+                p_boot = 1.0 / (len(boot_ratios) + 1)
+        else:
+            p_boot = np.nan
+
+        ev = evidence_label(p_boot if np.isfinite(p_boot) else 0.001, n_total, ci, "moderate", alpha=cfg.alpha)
         if robustness == "Fragile":
             cap = cfg.fragile_evidence_cap
             ev_order = ["None", "Weak", "Moderate", "Strong"]
@@ -743,6 +763,9 @@ class KPIEngine:
                 "leave_k_sensitivity": leave_k_res,
                 "robustness": robustness,
                 "per_tier_mean_enrollments": tier_means,
+                "bootstrap_p_value": p_boot,
+                "mann_whitney_u": mw_u,
+                "mann_whitney_p_value": mw_p,
             },
         )
 

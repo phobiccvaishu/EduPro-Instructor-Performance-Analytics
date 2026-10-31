@@ -126,6 +126,15 @@ class TestKPIsV2:
         assert res[2]["high_share"] == pytest.approx(0.0)
         assert res[2]["ratio"] == pytest.approx(0.0)
 
+    def test_kpi5_p_values(self, dataset) -> None:
+        """Item 6: KPI 5 explicitly reports Mann-Whitney U p-value and bootstrap p-value."""
+        ke = KPIEngine(dataset.master)
+        kpi5 = ke.enrollment_influence_v2(cfg=AnalysisConfig(fast_mode=True, seed=20260601))
+        assert "mann_whitney_p_value" in kpi5.extra
+        assert "bootstrap_p_value" in kpi5.extra
+        assert kpi5.extra["mann_whitney_p_value"] == pytest.approx(0.0301, abs=1e-3)
+        assert kpi5.extra["bootstrap_p_value"] <= 0.02
+
     def test_kpi_cis_deterministic(self, dataset) -> None:
         """Item 22: KPI CIs are fully deterministic when cfg.seed is set."""
         ke = KPIEngine(dataset.master)
