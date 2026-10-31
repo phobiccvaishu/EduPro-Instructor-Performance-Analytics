@@ -352,3 +352,36 @@ class TestVerificationValues:
         assert len(results["findings"]) >= 13
         assert len(results["kpis_v2"]) >= 5
         assert elapsed < 2.5, f"Fast mode execution took {elapsed:.2f}s, expected < 2.5s"
+
+    def test_consecutive_runs_deterministic_invariance(self, dataset) -> None:
+        """Item 5: Consecutive runs at default config yield identical Finding and KPI objects."""
+        engine = AnalyticsEngine(
+            dataset.master,
+            dataset.teachers,
+            dataset.courses,
+            dataset.transactions,
+        )
+        res1 = engine.run_full_analysis(cfg=AnalysisConfig(fast_mode=True, seed=20260601))
+        res2 = engine.run_full_analysis(cfg=AnalysisConfig(fast_mode=True, seed=20260601))
+
+        # Check findings
+        assert set(res1["findings"].keys()) == set(res2["findings"].keys())
+        for k in res1["findings"]:
+            f1 = res1["findings"][k]
+            f2 = res2["findings"][k]
+            assert f1.statistic == f2.statistic or (pd.isna(f1.statistic) and pd.isna(f2.statistic))
+            assert f1.p_value == f2.p_value or (pd.isna(f1.p_value) and pd.isna(f2.p_value))
+            assert f1.ci_low == f2.ci_low or (pd.isna(f1.ci_low) and pd.isna(f2.ci_low))
+            assert f1.ci_high == f2.ci_high or (pd.isna(f1.ci_high) and pd.isna(f2.ci_high))
+            assert f1.verdict == f2.verdict
+            assert f1.evidence == f2.evidence
+
+        # Check KPIs
+        assert set(res1["kpis_v2"].keys()) == set(res2["kpis_v2"].keys())
+        for k in res1["kpis_v2"]:
+            k1 = res1["kpis_v2"][k]
+            k2 = res2["kpis_v2"][k]
+            assert k1.value == k2.value or (pd.isna(k1.value) and pd.isna(k2.value))
+            assert k1.ci_low == k2.ci_low or (pd.isna(k1.ci_low) and pd.isna(k2.ci_low))
+            assert k1.ci_high == k2.ci_high or (pd.isna(k1.ci_high) and pd.isna(k2.ci_high))
+            assert k1.evidence == k2.evidence
