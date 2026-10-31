@@ -24,7 +24,16 @@ from edupro.config import default_analysis_config
 
 
 def test_f1_known_distribution_values(dataset):
-    """F1: Deduplicated n=60 TeacherRating five-number summary and Shapiro-Wilk test."""
+    """F1: Deduplicated n=60 TeacherRating five-number summary, Shapiro-Wilk test, and tier counts."""
+    tr = dataset.teachers["TeacherRating"].dropna().to_numpy(dtype=float)
+    assert len(tr) == 60
+    assert float(tr.sum()) == pytest.approx(187.5, abs=1e-5)
+    assert float(tr.mean()) == pytest.approx(3.125, abs=1e-5)
+    assert int((tr >= 4.0).sum()) == 11
+    assert int(((tr >= 3.0) & (tr < 4.0)).sum()) == 28
+    assert int((tr < 3.0).sum()) == 21
+    assert int((tr < 2.0).sum()) == 9
+
     f1 = eval_f1_instructor_distribution(dataset.teachers, default_analysis_config)
     assert f1.n == 60
     assert f1.statistic == pytest.approx(3.125, abs=1e-3)
