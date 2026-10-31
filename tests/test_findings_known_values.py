@@ -129,4 +129,10 @@ def test_f13_known_ml_curriculum_gap(dataset):
     assert f13.ci_high == pytest.approx(0.418, abs=1e-2)
     assert f13.p_value == pytest.approx(0.163, abs=0.02)
     assert f13.verdict == "not supported"
+    assert f13.evidence == "None"
     assert f13.extra["ml_instructors_teacher_rating_mean"] == pytest.approx(4.234, abs=1e-2)
+    assert f13.extra["ml_quality_gap"]["platform_alignment_share"] == pytest.approx(0.4111, abs=1e-3)
+    loo = f13.extra["ml_quality_gap"]["leave_one_cluster_out"]
+    assert len(loo) == 5
+    assert "TC00042" in loo
+    assert loo["TC00042"]["B_minus_A_loo"] == pytest.approx(0.0836, abs=1e-3)

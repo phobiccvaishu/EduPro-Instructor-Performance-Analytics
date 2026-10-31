@@ -1836,6 +1836,20 @@ def eval_f13_expertise_vs_course_quality_and_ml_gap(
         p_boot = np.nan
         ci_gap = (np.nan, np.nan)
 
+    # Leave-one-cluster-out for ML teachers
+    loo_clusters = {}
+    for tid in ml_teachers:
+        sub_e = [e for t, e in zip(ml_teachers, t_enrs, strict=False) if t != tid]
+        sub_w = [w for t, w in zip(ml_teachers, t_w_sums, strict=False) if t != tid]
+        tot_sub_e = sum(sub_e)
+        b_loo = (sum(sub_w) / tot_sub_e) if tot_sub_e > 0 else np.nan
+        t_enr_val = next(e for t, e in zip(ml_teachers, t_enrs, strict=False) if t == tid)
+        loo_clusters[tid] = {
+            "enrollments": t_enr_val,
+            "B_loo": b_loo,
+            "B_minus_A_loo": b_loo - cat_ml_cr_catalog if np.isfinite(b_loo) else np.nan,
+        }
+
     # Separately report ML instructors' TeacherRating
     ml_teachers_df = teacher_df[teacher_df["Expertise"] == "Machine Learning"]
     ml_teacher_rating_mean = (
@@ -1845,8 +1859,29 @@ def eval_f13_expertise_vs_course_quality_and_ml_gap(
     own_mean = float(teacher_df["own_domain_share"].mean())
     own_med = float(teacher_df["own_domain_share"].median())
 
+    # Platform-wide expertise-category alignment (verified 41.1%)
+    align_matches = master[master["Expertise"] == master["CourseCategory"]]
+    tot_master_enr = float(master["EnrollmentCount"].sum())
+    platform_alignment_enr = float(align_matches["EnrollmentCount"].sum())
+    platform_alignment_share = (
+        (platform_alignment_enr / tot_master_enr) if tot_master_enr > 0 else 0.0
+    )
+
     ev = evidence_label(p_boot, n_teacher, ci_gap, "moderate", alpha=cfg.alpha)
+    if n_ml < cfg.min_cluster_size_reliable:
+        cap = cfg.small_cluster_evidence_cap
+        ev_order = ["None", "Weak", "Moderate", "Strong"]
+        if ev in ev_order and cap in ev_order and ev_order.index(ev) > ev_order.index(cap):
+            ev = cap
+
     verdict = _make_verdict(p_boot, ci_gap, n_teacher, cfg.min_group_size, cfg.alpha)
+
+    caveat_cluster = (
+        f" Caveat: With n={n_ml} teacher clusters (< {cfg.min_cluster_size_reliable}), "
+        f"percentile bootstrap estimates are fragile and subject to cluster-concentration bias."
+        if n_ml < cfg.min_cluster_size_reliable
+        else ""
+    )
 
     notes = (
         f"Machine Learning Quality Contrast: ML category catalog average CourseRating (A, n=5) is {cat_ml_cr_catalog:.3f} (held fixed) "
@@ -1855,7 +1890,9 @@ def eval_f13_expertise_vs_course_quality_and_ml_gap(
         f"teacher-cluster bootstrap distribution mean is {boot_mean:.3f} (offset from small-cluster ratio estimation bias, n={n_ml}); "
         f"95% cluster CI is [{ci_gap[0]:.3f}, {ci_gap[1]:.3f}] and bootstrap two-sided p = {p_boot:.3f} >= 0.05 (verdict: {verdict}). "
         f"ML instructors' TeacherRating averages {ml_teacher_rating_mean:.3f} (reported separately). "
-        f"Mean own-domain teaching share across platform is {own_mean * 100:.1f}%."
+        f"Platform-wide expertise-category enrollment alignment is {platform_alignment_share * 100:.1f}% "
+        f"({int(platform_alignment_enr):,}/{int(tot_master_enr):,} enrollments), "
+        f"while mean instructor own-domain portfolio share is {own_mean * 100:.1f}%.{caveat_cluster}"
     )
 
     return Finding(
@@ -1883,6 +1920,9 @@ def eval_f13_expertise_vs_course_quality_and_ml_gap(
                 "offset_explanation": f"Small-cluster ratio estimation bias (n={n_ml} clusters)",
                 "ci_B_minus_A": ci_gap,
                 "bootstrap_p_value": p_boot,
+                "leave_one_cluster_out": loo_clusters,
+                "platform_alignment_enr": platform_alignment_enr,
+                "platform_alignment_share": platform_alignment_share,
             },
             "ml_instructors_teacher_rating_mean": ml_teacher_rating_mean,
             "own_domain_share_mean": own_mean,

@@ -31,6 +31,8 @@ class AnalysisConfig:
     robustness_retention_threshold: float = 0.75
     robustness_k: int = 3
     fragile_evidence_cap: str = "Weak"
+    min_cluster_size_reliable: int = 8
+    small_cluster_evidence_cap: str = "Weak"
 
     @property
     def effective_n_boot(self) -> int:
@@ -63,6 +65,8 @@ class Settings:
     robustness_retention_threshold: float = 0.75
     robustness_k: int = 3
     fragile_evidence_cap: str = "Weak"
+    min_cluster_size_reliable: int = 8
+    small_cluster_evidence_cap: str = "Weak"
     allowed_verdicts: tuple[str, ...] = (
         "supported",
         "not supported",
