@@ -34,6 +34,22 @@ def test_f1_known_distribution_values(dataset):
     assert int((tr < 3.0).sum()) == 21
     assert int((tr < 2.0).sum()) == 9
 
+    # Item 2: Tier sums and means (<3.0, 3.0-3.99, >=4.0)
+    low_tr = tr[tr < 3.0]
+    mid_tr = tr[(tr >= 3.0) & (tr < 4.0)]
+    high_tr = tr[tr >= 4.0]
+    assert len(low_tr) == 21
+    assert float(low_tr.sum()) == pytest.approx(43.47, abs=1e-5)
+    assert float(low_tr.mean()) == pytest.approx(2.070, abs=1e-3)
+
+    assert len(mid_tr) == 28
+    assert float(mid_tr.sum()) == pytest.approx(96.09, abs=1e-5)
+    assert float(mid_tr.mean()) == pytest.approx(3.4318, abs=1e-3)
+
+    assert len(high_tr) == 11
+    assert float(high_tr.sum()) == pytest.approx(47.94, abs=1e-5)
+    assert float(high_tr.mean()) == pytest.approx(4.3582, abs=1e-3)
+
     f1 = eval_f1_instructor_distribution(dataset.teachers, default_analysis_config)
     assert f1.n == 60
     assert f1.statistic == pytest.approx(3.125, abs=1e-3)
@@ -131,7 +147,14 @@ def test_f13_known_ml_curriculum_gap(dataset):
     assert f13.verdict == "not supported"
     assert f13.evidence == "None"
     assert f13.extra["ml_instructors_teacher_rating_mean"] == pytest.approx(4.234, abs=1e-2)
-    assert f13.extra["ml_quality_gap"]["platform_alignment_share"] == pytest.approx(0.4111, abs=1e-3)
+    assert f13.extra["ml_quality_gap"]["platform_alignment_share"] == pytest.approx(
+        0.4111, abs=1e-3
+    )
+    # Item 4: Own-domain shares (a) platform-wide, (b) per-instructor enrollments, (c) per-instructor courses
+    assert f13.extra["own_domain_enrollment_share_mean"] == pytest.approx(0.7396, abs=1e-3)
+    assert f13.extra["own_domain_enrollment_share_median"] == pytest.approx(0.7722, abs=1e-3)
+    assert f13.extra["own_domain_course_share_mean"] == pytest.approx(0.3932, abs=1e-3)
+    assert f13.extra["own_domain_course_share_median"] == pytest.approx(0.3333, abs=1e-3)
     loo = f13.extra["ml_quality_gap"]["leave_one_cluster_out"]
     assert len(loo) == 5
     assert "TC00042" in loo
