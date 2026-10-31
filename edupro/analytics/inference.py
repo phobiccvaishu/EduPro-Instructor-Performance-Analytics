@@ -24,6 +24,7 @@ from edupro.analytics.stats import (
     bootstrap_ci,
     correlation,
     evidence_label,
+    experience_course_slope,
     gini,
     hhi,
     holm_adjust,
@@ -316,6 +317,7 @@ def eval_f3_experience_vs_course_rating(
         method="pearson",
         alpha=cfg.alpha,
     )
+    slope_info = experience_course_slope(t_clean, alpha=cfg.alpha)
 
     # Pair level with cluster-robust SEs (clustering on TeacherID)
     naive_pair_corr = correlation(
@@ -373,6 +375,8 @@ def eval_f3_experience_vs_course_rating(
         notes=notes,
         extra={
             "teacher_level": t_corr,
+            "teacher_slope": slope_info,
+            "ols_slope": slope_info["slope"],
             "pair_level_naive": naive_pair_corr,
             "pair_level_cluster_robust": {
                 "slope": cluster_slope,

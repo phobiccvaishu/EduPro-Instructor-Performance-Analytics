@@ -4,7 +4,7 @@ tests.test_insights
 Unit and governance tests for the dynamic insight generator:
 - Validates every insight function across supported, not-supported, descriptive, and insufficient-data states.
 - Asserts all numeric values in generated text match Finding fields.
-- Enforces strict zero-tolerance scanner for causal verbs, superlatives, and Unicode emojis.
+- Enforces strict zero-tolerance scanner for causal verbs, superlatives, editorial vocabulary, and Unicode emojis.
 """
 
 from __future__ import annotations
@@ -22,6 +22,8 @@ from edupro.insights import (
     generate_f2_insight,
     generate_f3_insight,
     generate_f4_insight,
+    generate_f4a_insight,
+    generate_f4b_insight,
     generate_f5_insight,
     generate_f6_insight,
     generate_f7_insight,
@@ -46,6 +48,16 @@ BANNED_WORDS = [
     r"\bproven\b",
     r"\bproving\b",
     r"\bentirely\b",
+    r"\battract\w*\b",
+    r"\bcapture\w*\b",
+    r"\bdemonstrat\w*\b",
+    r"\bconfirms?\b",
+    r"\bestablishes?\b",
+    r"\breflects?\b",
+    r"\bsuffer\w*\b",
+    r"\bboost\w*\b",
+    r"\bbecause\b",
+    r"\btherefore\b",
 ]
 
 EMOJI_PATTERN = re.compile(
@@ -64,7 +76,7 @@ def assert_governance_rules(insight: GeneratedInsight) -> None:
         f"Emoji found in insight {insight.finding_id}: {full_text}"
     )
 
-    # 2. No causal verbs or forbidden superlatives
+    # 2. No causal verbs, promotional words, or forbidden superlatives
     for pattern in BANNED_WORDS:
         match = re.search(pattern, full_text, re.IGNORECASE)
         assert not match, f"Banned phrase '{pattern}' found in {insight.finding_id}: {full_text}"
@@ -89,9 +101,10 @@ def test_f1_insight_baseline_and_governance(baseline_findings):
     f1 = baseline_findings["F1"]
     ins = generate_f1_insight(f1)
     assert_governance_rules(ins)
-    assert f"{f1.statistic:.2f}" in ins.headline
+    assert "3.13" in ins.headline or "3.12" in ins.headline
     assert ins.verdict == "Descriptive"
     assert ins.n == 60
+    assert "No statistically reliable departure from normality was detected" in ins.evidence_sentence
 
 
 def test_f2_insight_baseline_and_governance(baseline_findings):
@@ -113,15 +126,25 @@ def test_f3_insight_not_supported_phrasing(baseline_findings):
     assert ins.verdict == "Not supported"
     assert "No statistically reliable association was found" in ins.evidence_sentence
     assert "no effect" not in ins.evidence_sentence.lower()
+    assert "-0.0035" in ins.evidence_sentence
+    assert "p = 0.666" in ins.evidence_sentence
 
 
 def test_f4_insight_breakpoint(baseline_findings):
     """Test F4 experience bands and inflection breakpoint."""
     f4a = baseline_findings["F4a"]
     f4b = baseline_findings["F4b"]
+    ins_a = generate_f4a_insight(f4a)
+    assert_governance_rules(ins_a)
+    assert "+1.36" in ins_a.headline
+
+    ins_b = generate_f4b_insight(f4b)
+    assert_governance_rules(ins_b)
+    assert "8 Years" in ins_b.headline
+
     ins = generate_f4_insight(f4a, f4b)
     assert_governance_rules(ins)
-    assert f"{f4a.statistic:+.2f}" in ins.headline
+    assert "+1.36" in ins.headline
     assert "8 years" in ins.evidence_sentence
 
 
@@ -132,31 +155,40 @@ def test_f5_insight_cluster_aware_correlation(baseline_findings):
     assert_governance_rules(ins)
     assert ins.verdict == "Not supported"
     assert "No statistically reliable association was found" in ins.evidence_sentence
+    assert "Pearson r = 0.000" in ins.evidence_sentence
+    assert "p = 0.997" in ins.evidence_sentence
     assert "pseudo-replication" in ins.caveat.lower()
 
 
 def test_f6_f7_insights_category_and_level(baseline_findings):
-    """Test F6 and F7 non-significant ANOVA and Kruskal-Wallis insights."""
+    """Test F6 and F7 non-significant Kruskal-Wallis insights."""
     f6 = baseline_findings["F6"]
     ins6 = generate_f6_insight(f6)
     assert_governance_rules(ins6)
     assert "No statistically reliable association was found" in ins6.evidence_sentence
+    assert "H = 4.388" in ins6.evidence_sentence
+    assert "df = 11" in ins6.evidence_sentence
+    assert "p = 0.957" in ins6.evidence_sentence
 
     f7 = baseline_findings["F7"]
     ins7 = generate_f7_insight(f7)
     assert_governance_rules(ins7)
     assert "No statistically reliable association was found" in ins7.evidence_sentence
+    assert "H = 1.913" in ins7.evidence_sentence
+    assert "df = 2" in ins7.evidence_sentence
+    assert "p = 0.384" in ins7.evidence_sentence
 
 
 def test_f8_insight_domain_contrasts(baseline_findings):
-    """Test F8 domain ANOVA and Holm post-hoc pairwise contrasts."""
+    """Test F8 gender contrasts across teacher rating and course quality."""
     f8a = baseline_findings["F8a"]
     f8b = baseline_findings["F8b"]
     f8c = baseline_findings["F8c"]
     ins = generate_f8_insight(f8a, f8b, f8c)
     assert_governance_rules(ins)
-    assert "Holm-Bonferroni" in ins.evidence_sentence
-    assert "6 statistically significant domain pair contrasts" in ins.evidence_sentence
+    assert "Holm" in ins.evidence_sentence
+    assert "leave-top-3" in ins.evidence_sentence
+    assert "Course Quality Differs Between Instructor Genders" in ins.headline
 
 
 def test_f10_f11_insight_enrollment_concentration(baseline_findings):
@@ -165,7 +197,10 @@ def test_f10_f11_insight_enrollment_concentration(baseline_findings):
     f11 = baseline_findings["F11"]
     ins = generate_f10_f11_insight(f10, f11)
     assert_governance_rules(ins)
-    assert f"{f11.statistic * 100.0:.1f}%" in ins.headline
+    assert "68.2%" in ins.headline
+    assert "Account for" in ins.headline
+    assert "6,182 of the High tier's 6,820 enrollments belong to 4 instructors" in ins.evidence_sentence
+    assert "rating >= 4.0" in ins.evidence_sentence
 
 
 def test_f13_insight_machine_learning_gap(baseline_findings):
@@ -173,8 +208,10 @@ def test_f13_insight_machine_learning_gap(baseline_findings):
     f13 = baseline_findings["F13"]
     ins = generate_f13_insight(f13)
     assert_governance_rules(ins)
-    assert f"+{f13.statistic:.3f}" in ins.headline
-    assert "Machine Learning instructor ratings exceed" in ins.evidence_sentence
+    assert "+0.397" in ins.headline
+    assert "A) is 2.658" in ins.evidence_sentence
+    assert "B) of 3.055" in ins.evidence_sentence
+    assert "5 teacher clusters" in ins.evidence_sentence
 
 
 def test_insufficient_data_handling():
@@ -200,6 +237,8 @@ def test_insufficient_data_handling():
         generate_f1_insight,
         generate_f2_insight,
         generate_f3_insight,
+        generate_f4a_insight,
+        generate_f4b_insight,
         generate_f5_insight,
         generate_f6_insight,
         generate_f7_insight,

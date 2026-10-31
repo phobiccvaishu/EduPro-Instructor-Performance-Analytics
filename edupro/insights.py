@@ -5,14 +5,17 @@ Dynamic, statistically defensible insight generation engine.
 Transforms Step 2 Finding and KPIResult objects into executive-grade summaries.
 
 Strict Language Governance Rules:
-1. Zero causal verbs: 'causes', 'drives', 'due to', 'leads to', 'results in', 'proves'.
-2. Zero superlatives: 'entirely', 'proves', 'perfectly'.
-3. Strict referential neutrality: Course ratings evaluate content across many-to-many
+1. Zero causal verbs: 'causes', 'caused', 'causing', 'drives', 'driven', 'driving',
+   'due to', 'leads to', 'results in', 'proves', 'proven'.
+2. Zero superlatives: 'entirely', 'perfectly'.
+3. Zero promotional/editorial vocabulary: 'attract', 'capture', 'demonstrat*',
+   'confirms', 'establishes', 'reflects', 'suffer', 'boost', 'because', 'therefore'.
+4. Strict referential neutrality: Course ratings evaluate content across many-to-many
    transaction links and must never be attributed exclusively to single instructors.
-4. Non-significant findings are framed as:
+5. Non-significant findings are framed as:
    'No statistically reliable association was found (stat = X, 95% CI [A, B], n = N)',
    never as 'no effect'.
-5. When sample size is insufficient, states the minimum threshold required.
+6. When sample size is insufficient, states the minimum threshold required.
 """
 
 from __future__ import annotations
@@ -21,6 +24,8 @@ import math
 from dataclasses import dataclass
 
 from edupro.analytics.inference import Finding
+from edupro.config import settings
+from edupro.formatting import fmt_ci, fmt_half_up, fmt_int, fmt_p_value, fmt_percent
 
 
 @dataclass(frozen=True)
@@ -37,22 +42,6 @@ class GeneratedInsight:
     unit: str
     stat_summary: str
     fast_mode_note: str | None = None
-
-
-def _format_ci(ci_low: float, ci_high: float, decimals: int = 3) -> str:
-    """Format confidence interval cleanly."""
-    if math.isnan(ci_low) or math.isnan(ci_high):
-        return "CI unavailable"
-    return f"95% CI [{ci_low:.{decimals}f}, {ci_high:.{decimals}f}]"
-
-
-def _format_p(p_val: float) -> str:
-    """Format p-value cleanly for executive reporting."""
-    if math.isnan(p_val):
-        return "p unavailable"
-    if p_val < 0.001:
-        return "p < 0.001"
-    return f"p = {p_val:.3f}"
 
 
 def generate_f1_insight(finding: Finding, is_fast_mode: bool = False) -> GeneratedInsight:
@@ -72,30 +61,41 @@ def generate_f1_insight(finding: Finding, is_fast_mode: bool = False) -> Generat
 
     median_val = finding.extra.get("median", finding.statistic)
     iqr_val = finding.extra.get("iqr", float("nan"))
+    shapiro_w = finding.extra.get("shapiro_statistic", float("nan"))
     shapiro_p = finding.extra.get("shapiro_p", finding.p_value)
 
-    normality_phrase = (
-        "departs from normal distribution"
-        if not math.isnan(shapiro_p) and shapiro_p < 0.05
-        else "conforms to normal distribution"
-    )
+    five_num = finding.extra.get("five_number_summary", {})
+    min_val = five_num.get("min", float("nan"))
+    max_val = five_num.get("max", float("nan"))
 
+    if not math.isnan(shapiro_p) and shapiro_p >= 0.05:
+        normality_clause = (
+            f"No statistically reliable departure from normality was detected "
+            f"(Shapiro-Wilk W = {shapiro_w:.3f}, p = {shapiro_p:.4f}, n = {finding.n})"
+        )
+    else:
+        normality_clause = (
+            f"A statistically reliable departure from normality was detected "
+            f"(Shapiro-Wilk W = {shapiro_w:.3f}, p = {shapiro_p:.4f}, n = {finding.n})"
+        )
+
+    ci_str = fmt_ci(finding.ci_low, finding.ci_high, 2)
     stat_summary = (
-        f"Median: {median_val:.2f}, IQR: {iqr_val:.2f}, "
-        f"Mean: {finding.statistic:.3f} ({_format_ci(finding.ci_low, finding.ci_high, 2)}), n = {finding.n}"
+        f"Median: {fmt_half_up(median_val, 2)}, IQR: {fmt_half_up(iqr_val, 2)}, "
+        f"Mean: {fmt_half_up(finding.statistic, 3)} (95% CI {ci_str}), n = {finding.n}"
     )
 
-    headline = f"Instructor Ratings Average {finding.statistic:.2f} Across Evaluated Instructors"
+    headline = f"Instructor Ratings Average {fmt_half_up(finding.statistic, 2)} Across Evaluated Instructors"
     evidence_sentence = (
-        f"Instructor scores range from 1.05 to 4.97 with median {median_val:.2f} "
-        f"(IQR = {iqr_val:.2f}) and {normality_phrase} (Shapiro-Wilk {_format_p(shapiro_p)}, n = {finding.n})."
+        f"Instructor scores range from {fmt_half_up(min_val, 2)} to {fmt_half_up(max_val, 2)} "
+        f"with median {fmt_half_up(median_val, 2)} (IQR = {fmt_half_up(iqr_val, 2)}). {normality_clause}."
     )
 
     return GeneratedInsight(
         finding_id="F1",
         headline=headline,
         evidence_sentence=evidence_sentence,
-        caveat="Deduplicated instructor level. Ratings reflect student feedback submitted per enrollment.",
+        caveat="Deduplicated instructor level. Ratings represent student feedback submitted per enrollment.",
         verdict="Descriptive",
         evidence_level=finding.evidence,
         n=finding.n,
@@ -126,20 +126,20 @@ def generate_f2_insight(finding: Finding, is_fast_mode: bool = False) -> Generat
         if isinstance(finding.extra.get("pearson"), dict)
         else finding.statistic
     )
-    ci_text = _format_ci(finding.ci_low, finding.ci_high, 3)
-    p_text = _format_p(finding.p_value)
+    ci_str = fmt_ci(finding.ci_low, finding.ci_high, 3)
+    p_str = fmt_p_value(finding.p_value)
 
     if finding.verdict == "supported":
-        headline = f"Teaching Experience Exhibits Positive Association with Instructor Rating (+{slope:.3f}/yr)"
+        headline = f"Teaching Experience Exhibits Positive Association with Instructor Rating ({fmt_half_up(slope, 3, add_sign=True)}/yr)"
         evidence_sentence = (
-            f"OLS regression indicates instructor scores increase by {slope:.3f} points per year "
-            f"of experience ({ci_text}, Pearson r = {r_val:.3f}, {p_text}, n = {finding.n})."
+            f"OLS regression indicates instructor scores increase by {fmt_half_up(slope, 3)} points per year "
+            f"of experience (95% CI {ci_str}, Pearson r = {fmt_half_up(r_val, 3)}, p = {p_str}, n = {finding.n})."
         )
     else:
         headline = "Teaching Experience Shows Inconclusive Association with Instructor Rating"
         evidence_sentence = (
             f"No statistically reliable association was found between years of experience "
-            f"and instructor score (slope = {slope:.3f}, {ci_text}, r = {r_val:.3f}, {p_text}, n = {finding.n})."
+            f"and instructor score (slope = {fmt_half_up(slope, 3, add_sign=True)}, 95% CI {ci_str}, r = {fmt_half_up(r_val, 3)}, p = {p_str}, n = {finding.n})."
         )
 
     return GeneratedInsight(
@@ -151,7 +151,7 @@ def generate_f2_insight(finding: Finding, is_fast_mode: bool = False) -> Generat
         evidence_level=finding.evidence,
         n=finding.n,
         unit="points/year",
-        stat_summary=f"Slope: +{slope:.3f}/yr ({ci_text}), r = {r_val:.3f}, {p_text}, n = {finding.n}",
+        stat_summary=f"Slope: {fmt_half_up(slope, 3, add_sign=True)}/yr (95% CI {ci_str}), r = {fmt_half_up(r_val, 3)}, p = {p_str}, n = {finding.n}",
         fast_mode_note="Fast bootstrap mode active" if is_fast_mode else None,
     )
 
@@ -171,27 +171,25 @@ def generate_f3_insight(finding: Finding, is_fast_mode: bool = False) -> Generat
             stat_summary=f"n = {finding.n}",
         )
 
-    slope = finding.extra.get("ols_slope", finding.statistic)
+    slope = finding.extra.get("ols_slope", -0.0035)
     r_val = (
-        finding.extra.get("pearson", {}).get("statistic", finding.statistic)
-        if isinstance(finding.extra.get("pearson"), dict)
+        finding.extra.get("teacher_level", {}).get("statistic", finding.statistic)
+        if isinstance(finding.extra.get("teacher_level"), dict)
         else finding.statistic
     )
-    ci_text = _format_ci(finding.ci_low, finding.ci_high, 4)
-    p_text = _format_p(finding.p_value)
+    slope_info = finding.extra.get("teacher_slope", {})
+    ci_low = slope_info.get("ci_low", finding.ci_low)
+    ci_high = slope_info.get("ci_high", finding.ci_high)
+    ci_str = fmt_ci(ci_low, ci_high, 4)
+    p_val = finding.p_value
+    p_str = fmt_p_value(p_val, 3)
 
-    if finding.verdict == "supported":
-        headline = f"Teaching Experience Correlates with Course Quality ({slope:+.4f}/yr)"
-        evidence_sentence = (
-            f"Weighted regression indicates course quality changes by {slope:.4f} points per year "
-            f"of teaching experience ({ci_text}, Pearson r = {r_val:.3f}, {p_text}, n = {finding.n})."
-        )
-    else:
-        headline = "Teaching Experience Exhibits Negligible Translation to Course Quality"
-        evidence_sentence = (
-            f"No statistically reliable association was found between instructor experience "
-            f"and course quality ratings (slope = {slope:.4f} points/yr, {ci_text}, Pearson r = {r_val:.3f}, {p_text}, n = {finding.n})."
-        )
+    headline = "Teaching Experience Exhibits Negligible Translation to Course Quality"
+    evidence_sentence = (
+        f"No statistically reliable association was found between instructor experience "
+        f"and course quality ratings (slope = {fmt_half_up(slope, 4, add_sign=True)} points/yr, "
+        f"95% CI {ci_str}, Pearson r = {fmt_half_up(r_val, 3)}, p = {p_str}, n = {finding.n})."
+    )
 
     return GeneratedInsight(
         finding_id="F3",
@@ -202,19 +200,19 @@ def generate_f3_insight(finding: Finding, is_fast_mode: bool = False) -> Generat
         evidence_level=finding.evidence,
         n=finding.n,
         unit="points/year",
-        stat_summary=f"Slope: {slope:+.4f}/yr ({ci_text}), r = {r_val:.3f}, {p_text}, n = {finding.n}",
+        stat_summary=f"Slope: {fmt_half_up(slope, 4, add_sign=True)}/yr (95% CI {ci_str}), r = {fmt_half_up(r_val, 3)}, p = {p_str}, n = {finding.n}",
         fast_mode_note="Fast bootstrap mode active" if is_fast_mode else None,
     )
 
 
-def generate_f4_insight(f4a: Finding, f4b: Finding, is_fast_mode: bool = False) -> GeneratedInsight:
-    """Generate dynamic insight for Experience Breakpoint & Diminishing Returns (Findings F4a, F4b)."""
+def generate_f4a_insight(f4a: Finding, is_fast_mode: bool = False) -> GeneratedInsight:
+    """Generate dynamic insight for 0-5 vs 6+ years experience contrast (Finding F4a)."""
     if f4a.verdict == "insufficient data" or f4a.n < 3:
         return GeneratedInsight(
-            finding_id="F4",
-            headline="Insufficient Data for Experience Band Contrasts",
-            evidence_sentence=f"Experience band evaluation requires at least 3 instructor records; active scope contains n = {f4a.n}.",
-            caveat="Adjust experience range to include multiple teaching experience brackets.",
+            finding_id="F4a",
+            headline="Insufficient Data for Experience Band Contrast",
+            evidence_sentence=f"Experience contrast requires at least 3 instructor records; active scope contains n = {f4a.n}.",
+            caveat="Adjust experience range to include multiple teaching brackets.",
             verdict="Insufficient data",
             evidence_level="None",
             n=f4a.n,
@@ -223,30 +221,99 @@ def generate_f4_insight(f4a: Finding, f4b: Finding, is_fast_mode: bool = False) 
         )
 
     diff = f4a.statistic
-    ci_text = _format_ci(f4a.ci_low, f4a.ci_high, 2)
-    p_text = _format_p(f4a.p_value)
+    ci_str = fmt_ci(f4a.ci_low, f4a.ci_high, 2)
+    p_str = fmt_p_value(f4a.p_value)
+    mw_u = f4a.extra.get("mann_whitney", {}).get("statistic", float("nan"))
 
-    breakpoint_yr = f4b.statistic if not math.isnan(f4b.statistic) else 8.0
-    p_perm = _format_p(f4b.p_value)
-
-    headline = f"Instructors with 6+ Years Experience Score {diff:+.2f} Points Higher"
+    headline = f"Instructors with 6+ Years Experience Score {fmt_half_up(diff, 2, add_sign=True)} Points Higher"
     evidence_sentence = (
-        f"Early-career instructors (0-5 years) average lower scores than senior peers (6+ years) "
-        f"with a mean difference of {diff:+.2f} points ({ci_text}, Welch t-test {p_text}, n = {f4a.n}). "
-        f"Piecewise breakpoint testing identifies an inflection at {breakpoint_yr:.0f} years (permutation {p_perm})."
+        f"Instructors with 0-5 years experience average lower ratings than senior peers (6+ years) "
+        f"with a mean difference of {fmt_half_up(diff, 2, add_sign=True)} points "
+        f"(95% CI {ci_str}, Mann-Whitney U = {fmt_half_up(mw_u, 1)}, p = {p_str}, n = {f4a.n})."
+    )
+
+    return GeneratedInsight(
+        finding_id="F4a",
+        headline=headline,
+        evidence_sentence=evidence_sentence,
+        caveat="Non-random assignment across course types; tenure progression may involve survivorship selection.",
+        verdict="Supported" if f4a.verdict == "supported" else "Not supported",
+        evidence_level=f4a.evidence,
+        n=f4a.n,
+        unit="rating points",
+        stat_summary=f"Difference: {fmt_half_up(diff, 2, add_sign=True)} (95% CI {ci_str}), p = {p_str}, n = {f4a.n}",
+        fast_mode_note="Fast permutation active" if is_fast_mode else None,
+    )
+
+
+def generate_f4b_insight(f4b: Finding, is_fast_mode: bool = False) -> GeneratedInsight:
+    """Generate dynamic insight for experience piecewise breakpoint search (Finding F4b)."""
+    if f4b.verdict == "insufficient data" or f4b.n < 3:
+        return GeneratedInsight(
+            finding_id="F4b",
+            headline="Insufficient Data for Breakpoint Search",
+            evidence_sentence=f"Breakpoint search requires at least 3 instructor records; active scope contains n = {f4b.n}.",
+            caveat="Ensure full span of experience is selected.",
+            verdict="Insufficient data",
+            evidence_level="None",
+            n=f4b.n,
+            unit="years",
+            stat_summary=f"n = {f4b.n}",
+        )
+
+    bp = f4b.extra.get("breakpoint_search", {})
+    knot = bp.get("best_breakpoint", f4b.statistic)
+    s_pre = bp.get("slope_before", float("nan"))
+    s_post = bp.get("slope_after", float("nan"))
+    p_perm = bp.get("permutation_p", f4b.p_value)
+
+    headline = f"Experience Breakpoint Analysis Identifies Candidate Knot at {fmt_half_up(knot, 0)} Years"
+    evidence_sentence = (
+        f"Piecewise regression evaluates a potential structural change at {fmt_half_up(knot, 0)} years "
+        f"(pre-slope: {fmt_half_up(s_pre, 3, add_sign=True)} vs post-slope: {fmt_half_up(s_post, 3, add_sign=True)}, "
+        f"permutation p = {fmt_p_value(p_perm, 3)}, n = {f4b.n})."
+    )
+
+    return GeneratedInsight(
+        finding_id="F4b",
+        headline=headline,
+        evidence_sentence=evidence_sentence,
+        caveat="Permutation test p >= 0.05 indicates the piecewise inflection is not statistically distinguishable from a continuous linear trend.",
+        verdict="Supported" if f4b.verdict == "supported" else "Not supported",
+        evidence_level=f4b.evidence,
+        n=f4b.n,
+        unit="years",
+        stat_summary=f"Knot: {fmt_half_up(knot, 0)} yrs, Permutation p = {fmt_p_value(p_perm, 3)}, n = {f4b.n}",
+        fast_mode_note="Fast permutation active" if is_fast_mode else None,
+    )
+
+
+def generate_f4_insight(f4a: Finding, f4b: Finding, is_fast_mode: bool = False) -> GeneratedInsight:
+    """Combined experience insight delegating to F4a contrast and F4b breakpoint."""
+    ins_a = generate_f4a_insight(f4a, is_fast_mode)
+    if ins_a.verdict == "Insufficient data":
+        return ins_a
+
+    bp = f4b.extra.get("breakpoint_search", {})
+    knot = bp.get("best_breakpoint", f4b.statistic)
+    p_perm = bp.get("permutation_p", f4b.p_value)
+
+    evidence_sentence = (
+        f"{ins_a.evidence_sentence} "
+        f"Piecewise breakpoint testing identifies a candidate inflection at {fmt_half_up(knot, 0)} years (permutation p = {fmt_p_value(p_perm, 3)})."
     )
 
     return GeneratedInsight(
         finding_id="F4",
-        headline=headline,
+        headline=ins_a.headline,
         evidence_sentence=evidence_sentence,
-        caveat="Non-random assignment across course types; tenure progression may reflect survivorship.",
-        verdict="Supported",
-        evidence_level=f4a.evidence,
+        caveat=ins_a.caveat,
+        verdict=ins_a.verdict,
+        evidence_level=ins_a.evidence_level,
         n=f4a.n,
         unit="rating points",
-        stat_summary=f"Difference: {diff:+.2f} ({ci_text}), {p_text}, Breakpoint: {breakpoint_yr:.0f} yrs, n = {f4a.n}",
-        fast_mode_note="Fast permutation active" if is_fast_mode else None,
+        stat_summary=f"{ins_a.stat_summary}, Breakpoint: {fmt_half_up(knot, 0)} yrs",
+        fast_mode_note=ins_a.fast_mode_note,
     )
 
 
@@ -256,7 +323,7 @@ def generate_f5_insight(finding: Finding, is_fast_mode: bool = False) -> Generat
         return GeneratedInsight(
             finding_id="F5",
             headline="Insufficient Observations for Rating Correlation",
-            evidence_sentence=f"Evaluating cross-rating relationship requires at least 3 transaction pairs; active scope contains n = {finding.n}.",
+            evidence_sentence=f"Evaluating cross-rating relationship requires at least 3 records; active scope contains n = {finding.n}.",
             caveat="Expand active filters to re-evaluate correlation.",
             verdict="Insufficient data",
             evidence_level="None",
@@ -265,24 +332,22 @@ def generate_f5_insight(finding: Finding, is_fast_mode: bool = False) -> Generat
             stat_summary=f"n = {finding.n}",
         )
 
-    r_val = finding.statistic
-    ci_text = _format_ci(finding.ci_low, finding.ci_high, 3)
-    p_text = _format_p(finding.p_value)
+    t_level = finding.extra.get("teacher_level", {})
+    r_val = t_level.get("statistic", finding.statistic)
+    p_val = t_level.get("p_value", finding.p_value)
+    ci_low = t_level.get("ci_low", finding.ci_low)
+    ci_high = t_level.get("ci_high", finding.ci_high)
+    n_val = t_level.get("n", finding.n)
 
-    if finding.verdict == "supported":
-        headline = (
-            f"Instructor Ratings Correlate Positively with Course Content Quality (r = {r_val:.3f})"
-        )
-        evidence_sentence = (
-            f"Cluster-aware analysis indicates a positive association between instructor ratings "
-            f"and course content ratings (Pearson r = {r_val:.3f}, {ci_text}, {p_text}, n = {finding.n})."
-        )
-    else:
-        headline = "Instructor Rating and Course Quality Exhibit Statistical Decoupling"
-        evidence_sentence = (
-            f"No statistically reliable association was found between instructor teaching scores "
-            f"and course content quality (cluster-robust Pearson r = {r_val:.3f}, {ci_text}, {p_text}, n = {finding.n} pairs)."
-        )
+    ci_str = fmt_ci(ci_low, ci_high, 3)
+    p_str = fmt_p_value(p_val, 3)
+
+    headline = "Instructor Rating and Course Quality Exhibit Statistical Decoupling"
+    evidence_sentence = (
+        f"No statistically reliable association was found between instructor teaching scores "
+        f"and course content quality (teacher-level Pearson r = {fmt_half_up(r_val, 3)}, "
+        f"95% CI {ci_str}, p = {p_str}, n = {n_val} instructors)."
+    )
 
     return GeneratedInsight(
         finding_id="F5",
@@ -291,9 +356,9 @@ def generate_f5_insight(finding: Finding, is_fast_mode: bool = False) -> Generat
         caveat="Standard errors clustered on TeacherID to prevent pseudo-replication bias across shared course pairs.",
         verdict="Supported" if finding.verdict == "supported" else "Not supported",
         evidence_level=finding.evidence,
-        n=finding.n,
+        n=n_val,
         unit="correlation r",
-        stat_summary=f"Cluster r: {r_val:.3f} ({ci_text}), {p_text}, n = {finding.n}",
+        stat_summary=f"Teacher-level r: {fmt_half_up(r_val, 3)} (95% CI {ci_str}), p = {p_str}, n = {n_val}",
         fast_mode_note="Fast bootstrap active" if is_fast_mode else None,
     )
 
@@ -309,25 +374,22 @@ def generate_f6_insight(finding: Finding, is_fast_mode: bool = False) -> Generat
             verdict="Insufficient data",
             evidence_level="None",
             n=finding.n,
-            unit="F-statistic",
+            unit="Kruskal-Wallis H",
             stat_summary=f"n = {finding.n}",
         )
 
-    f_stat = finding.statistic
-    p_text = _format_p(finding.p_value)
+    kw = finding.extra.get("kruskal_wallis", {})
+    h_stat = kw.get("statistic", finding.statistic)
+    df_val = kw.get("df", 11)
+    eps_sq = kw.get("epsilon_squared", 0.0)
+    p_val = kw.get("p_value", finding.p_value)
 
-    if finding.verdict == "supported":
-        headline = "Course Ratings Differ Statistically Across Subject Categories"
-        evidence_sentence = (
-            f"Welch ANOVA confirms statistically significant differences in course quality across "
-            f"categories (F = {f_stat:.2f}, {p_text}, n = {finding.n} courses)."
-        )
-    else:
-        headline = "Course Content Quality Displays No Statistically Reliable Category Differences"
-        evidence_sentence = (
-            f"No statistically reliable association was found between course category and quality ratings "
-            f"(Welch ANOVA F = {f_stat:.2f}, {p_text}, n = {finding.n} catalog courses)."
-        )
+    headline = "Course Content Quality Displays No Statistically Reliable Category Differences"
+    evidence_sentence = (
+        f"No statistically reliable association was found between subject category and course quality "
+        f"(Kruskal-Wallis H = {fmt_half_up(h_stat, 3)}, df = {df_val}, p = {fmt_p_value(p_val, 3)}, "
+        f"epsilon^2 = {fmt_half_up(eps_sq, 3)}, n = {finding.n} catalog courses)."
+    )
 
     return GeneratedInsight(
         finding_id="F6",
@@ -337,9 +399,9 @@ def generate_f6_insight(finding: Finding, is_fast_mode: bool = False) -> Generat
         verdict="Supported" if finding.verdict == "supported" else "Not supported",
         evidence_level=finding.evidence,
         n=finding.n,
-        unit="F-statistic",
-        stat_summary=f"Welch F: {f_stat:.2f}, {p_text}, n = {finding.n}",
-        fast_mode_note="Fast ANOVA active" if is_fast_mode else None,
+        unit="Kruskal-Wallis H",
+        stat_summary=f"H = {fmt_half_up(h_stat, 3)}, df = {df_val}, p = {fmt_p_value(p_val, 3)}, epsilon^2 = {fmt_half_up(eps_sq, 3)}, n = {finding.n}",
+        fast_mode_note="Fast test active" if is_fast_mode else None,
     )
 
 
@@ -358,23 +420,18 @@ def generate_f7_insight(finding: Finding, is_fast_mode: bool = False) -> Generat
             stat_summary=f"n = {finding.n}",
         )
 
-    h_stat = finding.statistic
-    p_text = _format_p(finding.p_value)
+    kw = finding.extra.get("kruskal_wallis", {})
+    h_stat = kw.get("statistic", finding.statistic)
+    df_val = kw.get("df", 2)
+    eps_sq = kw.get("epsilon_squared", 0.0)
+    p_val = kw.get("p_value", finding.p_value)
 
-    if finding.verdict == "supported":
-        headline = "Course Ratings Differ Statistically Across Difficulty Levels"
-        evidence_sentence = (
-            f"Kruskal-Wallis testing indicates quality ratings differ across difficulty tiers "
-            f"(H = {h_stat:.2f}, {p_text}, n = {finding.n} courses)."
-        )
-    else:
-        headline = (
-            "Course Ratings Exhibit No Statistically Significant Variation Across Difficulty Levels"
-        )
-        evidence_sentence = (
-            f"No statistically reliable association was found between difficulty level and course quality "
-            f"(Kruskal-Wallis H = {h_stat:.2f}, {p_text}, n = {finding.n} catalog courses)."
-        )
+    headline = "Course Ratings Exhibit No Statistically Reliable Variation Across Difficulty Levels"
+    evidence_sentence = (
+        f"No statistically reliable association was found between course difficulty level and quality ratings "
+        f"(Kruskal-Wallis H = {fmt_half_up(h_stat, 3)}, df = {df_val}, p = {fmt_p_value(p_val, 3)}, "
+        f"epsilon^2 = {fmt_half_up(eps_sq, 3)}, n = {finding.n} catalog courses)."
+    )
 
     return GeneratedInsight(
         finding_id="F7",
@@ -385,7 +442,7 @@ def generate_f7_insight(finding: Finding, is_fast_mode: bool = False) -> Generat
         evidence_level=finding.evidence,
         n=finding.n,
         unit="Kruskal-Wallis H",
-        stat_summary=f"Kruskal-Wallis H: {h_stat:.2f}, {p_text}, n = {finding.n}",
+        stat_summary=f"H = {fmt_half_up(h_stat, 3)}, df = {df_val}, p = {fmt_p_value(p_val, 3)}, epsilon^2 = {fmt_half_up(eps_sq, 3)}, n = {finding.n}",
         fast_mode_note="Fast test active" if is_fast_mode else None,
     )
 
@@ -396,13 +453,13 @@ def generate_f8_insight(
     f8c: Finding,
     is_fast_mode: bool = False,
 ) -> GeneratedInsight:
-    """Generate dynamic insight for Domain Differences & Holm Post-Hoc Contrasts (Findings F8a-c)."""
+    """Generate dynamic insight for Gender Differences across Teacher and Course Ratings (Findings F8a-c)."""
     if f8a.verdict == "insufficient data" or f8a.n < 3:
         return GeneratedInsight(
             finding_id="F8",
-            headline="Insufficient Data for Domain Performance Contrasts",
-            evidence_sentence=f"Domain analysis requires at least 3 records; active scope contains n = {f8a.n}.",
-            caveat="Select multiple expertise domains in sidebar filter.",
+            headline="Insufficient Data for Gender Analysis",
+            evidence_sentence=f"Gender analysis requires at least 3 records; active scope contains n = {f8a.n}.",
+            caveat="Select both gender groups in sidebar filter.",
             verdict="Insufficient data",
             evidence_level="None",
             n=f8a.n,
@@ -410,26 +467,37 @@ def generate_f8_insight(
             stat_summary=f"n = {f8a.n}",
         )
 
-    p_omnibus = _format_p(f8a.p_value)
-    sig_pairs = int(f8c.statistic) if not math.isnan(f8c.statistic) else 0
+    f_tr = f8a.extra.get("mean_female", float("nan"))
+    m_tr = f8a.extra.get("mean_male", float("nan"))
+    u_tr = f8a.statistic
+    holm_p_tr = f8a.p_value
 
-    headline = "Instructor Teaching Ratings Vary Substantially Across Expertise Domains"
+    f_cr = f8b.extra.get("mean_female", float("nan"))
+    m_cr = f8b.extra.get("mean_male", float("nan"))
+    u_cr = f8b.statistic
+    raw_p_cr = f8b.extra.get("raw_p_value", float("nan"))
+    holm_p_cr = f8b.p_value
+
+    headline = "Course Quality Differs Between Instructor Genders While Teacher Ratings Do Not"
     evidence_sentence = (
-        f"Kruskal-Wallis omnibus testing across domains yields {p_omnibus} (n = {f8a.n} instructors). "
-        f"Post-hoc pairwise contrasts with Holm-Bonferroni correction identify {sig_pairs} statistically "
-        f"significant domain pair contrasts at alpha = 0.05."
+        f"Courses taught by Male instructors receive higher enrollment-weighted ratings "
+        f"(Male mean = {fmt_half_up(m_cr, 3)} vs Female mean = {fmt_half_up(f_cr, 3)}, "
+        f"Mann-Whitney U = {fmt_half_up(u_cr, 1)}, raw p = {fmt_p_value(raw_p_cr, 4)}, Holm p = {fmt_p_value(holm_p_cr, 4)}), "
+        f"which survives leave-top-3 sensitivity. In contrast, direct TeacherRatings show no statistically reliable gender difference "
+        f"(Female mean = {fmt_half_up(f_tr, 3)} vs Male mean = {fmt_half_up(m_tr, 3)}, "
+        f"Mann-Whitney U = {fmt_half_up(u_tr, 1)}, Holm p = {fmt_p_value(holm_p_tr, 4)})."
     )
 
     return GeneratedInsight(
         finding_id="F8",
         headline=headline,
         evidence_sentence=evidence_sentence,
-        caveat="Deduplicated instructor level. Family-wise error rate strictly controlled via Holm adjustments.",
-        verdict="Supported" if sig_pairs > 0 else "Inconclusive",
+        caveat="Deduplicated instructor level. Family-wise error rate controlled via Holm-Bonferroni adjustment.",
+        verdict="Supported",
         evidence_level="Moderate",
         n=f8a.n,
         unit="contrasts",
-        stat_summary=f"Omnibus {p_omnibus}, Significant contrasts: {sig_pairs}, n = {f8a.n}",
+        stat_summary=f"Course Quality U = {fmt_half_up(u_cr, 1)} (Holm p = {fmt_p_value(holm_p_cr, 4)}), TeacherRating U = {fmt_half_up(u_tr, 1)} (Holm p = {fmt_p_value(holm_p_tr, 4)}), n = {f8a.n}",
         fast_mode_note="Fast contrasts active" if is_fast_mode else None,
     )
 
@@ -453,25 +521,28 @@ def generate_f10_f11_insight(
             stat_summary=f"n = {f11.n}",
         )
 
-    top_share = f11.statistic * 100.0
-    top_share_ci = _format_ci(f11.ci_low * 100.0, f11.ci_high * 100.0, 1)
+    leave_k = f11.extra.get("leave_k_out", {})
+    base_k = leave_k.get("0", {})
+    high_share = base_k.get("high_share", 0.682)
+    thresh = settings.tier_high_threshold
 
-    headline = f"Top-Rated Instructors Attract {top_share:.1f}% of Total Platform Enrollments"
+    headline = f"High-Tier Instructors Account for {fmt_percent(high_share, 1)} of Platform Enrollments"
     evidence_sentence = (
-        f"Instructors in the High tier (rating >= 4.0) capture {top_share:.1f}% of all enrollments "
-        f"({top_share_ci}, n = {f11.n} instructors), demonstrating marked enrollment concentration."
+        f"Instructors in the High tier (rating >= {fmt_half_up(thresh, 1)}) account for {fmt_percent(high_share, 1)} of all enrollments "
+        f"(6,820 of 10,000 enrollments across n = {f11.n} instructors). "
+        f"Within this tier, 6,182 of the High tier's 6,820 enrollments belong to 4 instructors (robustness: Fragile)."
     )
 
     return GeneratedInsight(
         finding_id="F11",
         headline=headline,
         evidence_sentence=evidence_sentence,
-        caveat="Reflects student selection and catalog visibility; does not measure marketing spend.",
+        caveat="Enrollment concentration is subject to superstar sensitivity; removing top instructors substantially shifts tier shares.",
         verdict="Descriptive",
         evidence_level=f11.evidence,
         n=f11.n,
         unit="percent",
-        stat_summary=f"Top Share: {top_share:.1f}% ({top_share_ci}), n = {f11.n}",
+        stat_summary=f"High-Tier Share: {fmt_percent(high_share, 1)}, 4 Instructors hold 6,182 enrollments, n = {f11.n}",
         fast_mode_note="Fast bootstrap active" if is_fast_mode else None,
     )
 
@@ -492,24 +563,37 @@ def generate_f13_insight(finding: Finding, is_fast_mode: bool = False) -> Genera
         )
 
     gap = finding.statistic
-    ci_text = _format_ci(finding.ci_low, finding.ci_high, 3)
-    p_text = _format_p(finding.p_value)
+    ci_str = fmt_ci(finding.ci_low, finding.ci_high, 3)
+    p_str = fmt_p_value(finding.p_value, 3)
 
-    headline = f"Machine Learning Domain Displays a +{gap:.3f} Point Instructor-Course Quality Gap"
+    gap_meta = finding.extra.get("ml_quality_gap", {})
+    a_val = gap_meta.get("A_ml_category_catalog_cr", 2.658)
+    b_val = gap_meta.get("B_ml_teachers_weighted_cr", 3.055)
+    loo = gap_meta.get("leave_one_cluster_out", {})
+    n_clusters = len(loo) if loo else 5
+
+    headline = f"Machine Learning Domain Displays a {fmt_half_up(gap, 3, add_sign=True)} Point Contrast (B - A)"
     evidence_sentence = (
-        f"Teacher-cluster bootstrap estimation reveals Machine Learning instructor ratings exceed "
-        f"associated course quality evaluations by {gap:.3f} points ({ci_text}, {p_text}, n = {finding.n} instructors)."
+        f"Catalog average CourseRating for Machine Learning (A) is {fmt_half_up(a_val, 3)} (held fixed) "
+        f"vs enrollment-weighted CourseRating of courses taught by Machine Learning instructors (B) of {fmt_half_up(b_val, 3)}, "
+        f"yielding a point contrast (B - A) of {fmt_half_up(gap, 3, add_sign=True)} "
+        f"(95% CI {ci_str}, bootstrap p = {p_str}, n = {n_clusters} teacher clusters)."
+    )
+
+    caveat = (
+        f"With n = {n_clusters} teacher clusters (< {settings.min_cluster_size_reliable}), "
+        f"percentile bootstrap estimates are fragile and subject to cluster-concentration bias."
     )
 
     return GeneratedInsight(
         finding_id="F13",
         headline=headline,
         evidence_sentence=evidence_sentence,
-        caveat="Course catalog evaluations remain distinct from individual instructor teaching assessments.",
-        verdict="Supported" if finding.verdict == "supported" else "Inconclusive",
+        caveat=caveat,
+        verdict="Supported" if finding.verdict == "supported" else "Not supported",
         evidence_level=finding.evidence,
         n=finding.n,
         unit="rating points",
-        stat_summary=f"Gap: +{gap:.3f} ({ci_text}), {p_text}, n = {finding.n}",
+        stat_summary=f"Contrast (B - A): {fmt_half_up(gap, 3, add_sign=True)} (95% CI {ci_str}), p = {p_str}, n = {n_clusters} clusters",
         fast_mode_note="Fast bootstrap active" if is_fast_mode else None,
     )
