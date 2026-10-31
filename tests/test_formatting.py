@@ -7,7 +7,6 @@ Tests asserting Decimal ROUND_HALF_UP rounding behavior for all formatters.
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from edupro.formatting import fmt_ci, fmt_half_up, fmt_int, fmt_p_value, fmt_percent, format_slope
 

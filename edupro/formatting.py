@@ -16,9 +16,10 @@ format_slope    -- regression slope with adaptive precision (4 dp when |v|<0.01)
 
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Any
 import math
+from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
+
 import numpy as np
 
 
@@ -54,7 +55,7 @@ def fmt_half_up(
 ) -> str:
     """
     Format numeric value using Decimal ROUND_HALF_UP arithmetic.
-    
+
     Examples:
         fmt_half_up(3.125, 2) -> "3.13"
         fmt_half_up(0.1204, 3, add_sign=True) -> "+0.120"

@@ -172,5 +172,5 @@ class TestKPIsV2:
         for name, exp_data in expected.items():
             if name in kpis and np.isfinite(exp_data["ci_low"]):
                 kpi_res = kpis[name]
-                assert kpi_res.ci_low == pytest.approx(exp_data["ci_low"], abs=0.01)
-                assert kpi_res.ci_high == pytest.approx(exp_data["ci_high"], abs=0.01)
+                assert kpi_res.ci_low == pytest.approx(exp_data["ci_low"], abs=1e-9)
+                assert kpi_res.ci_high == pytest.approx(exp_data["ci_high"], abs=1e-9)

@@ -30,6 +30,7 @@ from edupro.analytics.stats import (
     leave_k_out,
 )
 from edupro.config import AnalysisConfig, default_analysis_config, settings
+from edupro.formatting import fmt_half_up, format_slope  # noqa: F401
 from edupro.logging_setup import get_logger
 
 logger = get_logger("analytics.kpis")
@@ -49,9 +50,6 @@ class KPIResult:
     definition: str
     caveat: str
     extra: dict[str, Any] = field(default_factory=dict)
-
-
-from edupro.formatting import fmt_half_up, format_slope  # noqa: F401 (re-exported for backward compat)
 
 
 class KPIEngine:
@@ -723,7 +721,9 @@ class KPIEngine:
         else:
             p_boot = np.nan
 
-        ev = evidence_label(p_boot if np.isfinite(p_boot) else 0.001, n_total, ci, "moderate", alpha=cfg.alpha)
+        ev = evidence_label(
+            p_boot if np.isfinite(p_boot) else 0.001, n_total, ci, "moderate", alpha=cfg.alpha
+        )
         if robustness == "Fragile":
             cap = cfg.fragile_evidence_cap
             ev_order = ["None", "Weak", "Moderate", "Strong"]
